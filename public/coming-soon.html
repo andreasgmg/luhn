@@ -213,18 +213,19 @@
             </div>
         </div>
 
-        <div class="notify-section">
-            <p style="color: #cbd5e1;">
-                Vi lanserar snart Sveriges bästa verktyg för testdata. <br>
-                Vill du ha tillgång till API-nycklar före alla andra?
-            </p>
+        <div class="signup-container"
+            style="margin-top: 30px; max-width: 400px; margin-left: auto; margin-right: auto;">
+            <form id="waitlist-form" onsubmit="joinWaitlist(event)"
+                style="display: flex; gap: 10px; flex-direction: column;">
+                <div style="display: flex; gap: 10px;">
+                    <input type="email" id="email" placeholder="Din e-postadress" required
+                        style="padding: 14px; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: white; flex: 1;">
 
-            <form id="subscribeForm" onsubmit="submitEmail(event)">
-                <div class="input-group">
-                    <input type="email" id="emailInput" name="email" placeholder="dev@example.com" required>
-                    <button type="submit" id="submitBtn">BE NOTIFIED</button>
+                    <button type="submit" class="action-btn" id="submit-btn">
+                        Håll mig uppdaterad
+                    </button>
                 </div>
-                <p id="formStatus" style="margin-top: 10px; font-size: 0.85rem; height: 20px;"></p>
+                <p id="feedback" style="font-size: 0.9rem; margin-top: 5px; min-height: 20px;"></p>
             </form>
         </div>
     </div>
@@ -287,6 +288,52 @@
                 btn.style.opacity = "1";
                 statusMsg.style.color = "#ef4444";
                 statusMsg.innerText = "Kunde inte spara. Försök igen.";
+            }
+        }
+    </script>
+    <script src="/pocketbase.umd.js"></script>
+    <script>
+        // Konfigurera PocketBase (samma URL som i server.js default)
+        const pb = new PocketBase('https://pb.luhn.se');
+
+        async function joinWaitlist(e) {
+            e.preventDefault();
+
+            const emailInput = document.getElementById('email');
+            const feedback = document.getElementById('feedback');
+            const btn = document.getElementById('submit-btn');
+            const email = emailInput.value;
+
+            // UI Loading state
+            btn.disabled = true;
+            btn.textContent = "Sparar...";
+            feedback.textContent = "";
+            feedback.style.color = "#8b949e";
+
+            try {
+                // Spara till collectionen 'subscribers'
+                await pb.collection('subscribers').create({
+                    email: email
+                });
+
+                // Success UI
+                feedback.textContent = "Tack! Vi hör av oss när vi lanserar. 🚀";
+                feedback.style.color = "#2ea043"; // Grön
+                emailInput.value = "";
+
+            } catch (error) {
+                console.error(error);
+
+                // Hantera vanliga fel
+                if (error.data?.data?.email?.code === "validation_not_unique") {
+                    feedback.textContent = "Den här adressen är redan registrerad!";
+                    feedback.style.color = "#e3b341"; // Gul
+                } else {
+                    feedback.textContent = "Något gick fel. Försök igen senare.";
+                    feedback.style.color = "#ff7b72"; // Röd
+                }
+                btn.disabled = false;
+                btn.textContent = "Håll mig uppdaterad";
             }
         }
     </script>
