@@ -358,8 +358,8 @@ const getScenarioOptions = (req) => ({
 });
 
 // Ta bort när vi går live
-app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'coming-soon.html')); });
-// app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+// app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'coming-soon.html')); });
+app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 app.get('/docs', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'docs.html')); });
 app.get('/luhn-algoritmen', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'luhn-algoritmen.html')); });
 app.get('/terms', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'terms.html')); });
