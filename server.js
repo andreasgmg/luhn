@@ -426,5 +426,9 @@ app.post('/api/subscribe', async (req, res) => {
     }
 });
 
-if (process.env.NODE_ENV !== 'production') app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Starta servern om filen körs direkt
+if (require.main === module) {
+    app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+}
+
 module.exports = app;
