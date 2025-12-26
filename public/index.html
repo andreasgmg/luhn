@@ -21,7 +21,7 @@
     <header>
         <div class="container nav-content">
             <a href="/" class="logo">luhn<span>.se</span></a>
-            <div class="nav-links">
+            <div id="nav-links-container" class="nav-links">
                 <a href="/docs.html">Dokumentation</a>
                 <a href="#pricing">Priser</a>
                 <a href="mailto:hej@luhn.se">Kontakt</a>
@@ -212,6 +212,47 @@
         function copyCurl(){ /* ... existing copyCurl code ... */ }
         function showToast(msg){ /* ... existing showToast code ... */ }
         // etc...
+    </script>
+    <script>
+        function updateNavLinks() {
+            const navLinksContainer = document.getElementById('nav-links-container');
+            if (!navLinksContainer || !pb) return;
+
+            if (pb.authStore.isValid) {
+                // User is logged in
+                navLinksContainer.innerHTML = `
+                    <a href="/docs.html">Dokumentation</a>
+                    <a href="#pricing">Priser</a>
+                    <a href="/profile.html" style="margin-left: 30px;">Min Profil</a>
+                    <a href="#"><button id="logout-btn-nav" class="action-btn outline-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Logga Ut</button></a>
+                `;
+                // Re-attach logout listener
+                const logoutBtn = document.getElementById('logout-btn-nav');
+                if(logoutBtn) {
+                    logoutBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        pb.authStore.clear();
+                        window.location.href = '/';
+                    });
+                }
+            } else {
+                // User is logged out
+                navLinksContainer.innerHTML = `
+                    <a href="/docs.html">Dokumentation</a>
+                    <a href="#pricing">Priser</a>
+                    <a href="mailto:hej@luhn.se">Kontakt</a>
+                    <a href="/login.html" style="margin-left: 30px;">Logga In</a>
+                    <a href="/register.html"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
+                `;
+            }
+        }
+
+        // Run on page load, but ensure pb is initialized
+        if (window.pb) {
+            updateNavLinks();
+        } else {
+            document.addEventListener('DOMContentLoaded', updateNavLinks);
+        }
     </script>
 </body>
 </html>

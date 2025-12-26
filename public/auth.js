@@ -59,35 +59,55 @@ if (logoutBtn) {
 
 // --- PROFILE PAGE ---
 if (profileContent) {
-    if (!pb.authStore.isValid) {
-        window.location.href = '/login.html';
-    } else {
-        const user = pb.authStore.model;
-        
-        const manageSubscriptionBtn = user.stripe_customer_id ? 
-            `<button id="manage-subscription-btn" class="action-btn" style="margin-top: 20px;">Hantera prenumeration</button>` : '';
-        
-        const noSubscriptionMessage = user.plan === 'hobby' ?
-            `<p class="error-text">Du har för närvarande ingen aktiv prenumeration. Uppgradera din plan för att få tillgång till fler funktioner.</p>` : '';
-
-        profileContent.innerHTML = `
-            <div class="profile-details">
-                <p><strong>E-post:</strong> ${user.email}</p>
-                <p><strong>Plan:</strong> <span class="plan-badge">${user.plan}</span></p>
-                <hr>
-                <h3>Din API-nyckel</h3>
-                <p>Använd denna nyckel för att få tillgång till API:et.</p>
-                <pre class="api-key-box">${user.api_key}</pre>
-                <small>Denna nyckel är kopplad till din användare i Pocketbase.</small>
-                ${noSubscriptionMessage}
-                ${manageSubscriptionBtn}
-            </div>
-        `;
-
-        if (user.stripe_customer_id) {
-            document.getElementById('manage-subscription-btn').addEventListener('click', createCustomerPortalSession);
+    (async () => {
+        if (!pb.authStore.isValid) {
+            window.location.href = '/login.html';
+            return;
         }
-    }
+
+        try {
+            // Force a refresh to get the latest user data from the server
+            await pb.collection('users').authRefresh();
+            const user = pb.authStore.model;
+            
+            const manageSubscriptionBtn = user.stripe_customer_id ? 
+                `<button id="manage-subscription-btn" class="action-btn" style="margin-top: 20px;">Hantera prenumeration</button>` : '';
+            
+            const planMessage = user.plan === 'hobby' ?
+                `<p>Du har för närvarande ingen aktiv prenumeration.</p>` :
+                `<p>Tack för din prenumeration!</p>`;
+
+            profileContent.innerHTML = `
+                <div class="profile-details">
+                    <p><strong>E-post:</strong> ${user.email}</p>
+                    <p><strong>Plan:</strong> <span class="plan-badge">${user.plan}</span></p>
+                    ${planMessage}
+                    <hr>
+                    <h3>Din API-nyckel</h3>
+                    <p>Använd denna nyckel för att få tillgång till API:et.</p>
+                    <pre class="api-key-box" onclick="copyToClipboard('${user.api_key}')">${user.api_key}</pre>
+                    <small>Denna nyckel är kopplad till din användare i Pocketbase.</small>
+                    ${manageSubscriptionBtn}
+                </div>
+            `;
+
+            if (user.stripe_customer_id) {
+                document.getElementById('manage-subscription-btn').addEventListener('click', createCustomerPortalSession);
+            }
+        } catch (err) {
+            console.error("Profile page error:", err);
+            pb.authStore.clear();
+            window.location.href = '/login.html';
+        }
+    })();
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("API-nyckel kopierad till urklipp!");
+    }).catch(err => {
+        console.error('Could not copy text: ', err);
+    });
 }
 
 async function createCustomerPortalSession() {
