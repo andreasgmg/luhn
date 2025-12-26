@@ -149,6 +149,26 @@ app.post('/api/create-checkout-session', async (req, res) => {
     }
 });
 
+// Endpoint to create a Stripe Customer Portal session
+app.post('/api/create-customer-portal-session', async (req, res) => {
+    const { stripeCustomerId, returnUrl } = req.body;
+
+    if (!stripe || !stripeCustomerId || !returnUrl) {
+        return res.status(400).json({ error: "Missing stripeCustomerId or returnUrl" });
+    }
+
+    try {
+        const portalSession = await stripe.billingPortal.sessions.create({
+            customer: stripeCustomerId,
+            return_url: returnUrl,
+        });
+        res.json({ url: portalSession.url });
+    } catch (error) {
+        console.error("Stripe Customer Portal session creation failed:", error);
+        res.status(500).json({ error: "Could not create Customer Portal session" });
+    }
+});
+
 
 // Stripe webhook handler
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {

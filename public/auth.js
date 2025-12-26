@@ -63,6 +63,13 @@ if (profileContent) {
         window.location.href = '/login.html';
     } else {
         const user = pb.authStore.model;
+        
+        const manageSubscriptionBtn = user.stripe_customer_id ? 
+            `<button id="manage-subscription-btn" class="action-btn" style="margin-top: 20px;">Hantera prenumeration</button>` : '';
+        
+        const noSubscriptionMessage = user.plan === 'hobby' ?
+            `<p class="error-text">Du har för närvarande ingen aktiv prenumeration. Uppgradera din plan för att få tillgång till fler funktioner.</p>` : '';
+
         profileContent.innerHTML = `
             <div class="profile-details">
                 <p><strong>E-post:</strong> ${user.email}</p>
@@ -72,7 +79,47 @@ if (profileContent) {
                 <p>Använd denna nyckel för att få tillgång till API:et.</p>
                 <pre class="api-key-box">${user.api_key}</pre>
                 <small>Denna nyckel är kopplad till din användare i Pocketbase.</small>
+                ${noSubscriptionMessage}
+                ${manageSubscriptionBtn}
             </div>
         `;
+
+        if (user.stripe_customer_id) {
+            document.getElementById('manage-subscription-btn').addEventListener('click', createCustomerPortalSession);
+        }
     }
 }
+
+async function createCustomerPortalSession() {
+    if (!pb || !pb.authStore.isValid || !pb.authStore.model.stripe_customer_id) {
+        alert("Du måste vara inloggad med en aktiv prenumeration för att hantera den.");
+        window.location.href = '/login.html';
+        return;
+    }
+
+    const stripeCustomerId = pb.authStore.model.stripe_customer_id;
+    const returnUrl = window.location.href; // Return to current profile page
+
+    try {
+        const response = await fetch('/api/create-customer-portal-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ stripeCustomerId, returnUrl }),
+        });
+
+        const session = await response.json();
+
+        if (session.url) {
+            window.location.href = session.url;
+        } else {
+            alert('Kunde inte skapa en länk till kundportalen. Försök igen.');
+            console.error('Error creating customer portal session:', session);
+        }
+    } catch (error) {
+        alert('Ett fel uppstod vid hämtning av kundportal-länk.');
+        console.error('Error:', error);
+    }
+}
+
