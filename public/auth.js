@@ -1,5 +1,5 @@
 // public/auth.js
-const POCKETBASE_URL = 'http://luhn-pocketbase.services.coolify:8090';
+const POCKETBASE_URL = 'https://pb.luhn.se';
 const pb = new PocketBase(POCKETBASE_URL);
 
 const registerForm = document.getElementById('register-form');
