@@ -204,14 +204,123 @@
         // Init pricing toggle
         togglePricing();
 
-        // Other page functions
-        let generatedUrl = "";
-        function updateUrl(){ /* ... existing updateUrl code ... */ }
-        async function fetchData(){ /* ... existing fetchData code ... */ }
-        function copyOutput(){ /* ... existing copyOutput code ... */ }
-        function copyCurl(){ /* ... existing copyCurl code ... */ }
-        function showToast(msg){ /* ... existing showToast code ... */ }
-        // etc...
+        let generatedUrl = "https://luhn.se/api/person";
+
+        function updateUrl() {
+            const resource = document.getElementById('resource-select').value;
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const amount = document.querySelector('input[name="amount"]:checked').value;
+            const city = document.getElementById('city-filter').value;
+            const minAge = document.getElementById('min-age').value;
+            const maxAge = document.getElementById('max-age').value;
+            const invalidRate = document.getElementById('invalid-rate').value;
+            const status = document.getElementById('status-select').value;
+            const delay = document.getElementById('delay-check').checked;
+
+            let baseUrl = `https://luhn.se/api/${resource}`;
+            const params = new URLSearchParams();
+
+            if (format !== 'json') params.append('format', format);
+            if (amount > 1) params.append('amount', amount);
+            if (city) params.append('city', city);
+            if (minAge) params.append('minAge', minAge);
+            if (maxAge) params.append('maxAge', maxAge);
+            if (invalidRate > 0) params.append('invalidRate', invalidRate);
+            if (status) params.append('status', status);
+            if (delay) params.append('delay', 2000);
+            
+            const scenarioGroup = document.getElementById('scenario-group');
+            scenarioGroup.style.display = resource === 'person' ? 'block' : 'none';
+
+            generatedUrl = `${baseUrl}?${params.toString()}`;
+            const displayUrl = generatedUrl.length > 60 ? generatedUrl.substring(0, 57) + '...' : generatedUrl;
+            document.getElementById('current-url').innerHTML = `<span class="method">GET</span> ${displayUrl}`;
+        }
+
+        async function fetchData() {
+            updateUrl();
+            const outputElement = document.getElementById('json-output');
+            outputElement.innerHTML = '<span style="color: #8b949e;">Laddar data...</span>';
+
+            try {
+                const response = await fetch(generatedUrl);
+                const contentType = response.headers.get("content-type");
+                
+                let dataText = await response.text();
+
+                if (!response.ok) {
+                    try { // Try to parse error as JSON
+                        const errorJson = JSON.parse(dataText);
+                        outputElement.innerHTML = syntaxHighlight(errorJson);
+                    } catch (e) { // Fallback to plain text for non-JSON errors
+                        outputElement.textContent = dataText;
+                    }
+                    return;
+                }
+
+                if (contentType && contentType.includes("application/json")) {
+                    const jsonData = JSON.parse(dataText);
+                    outputElement.innerHTML = syntaxHighlight(jsonData);
+                } else if (contentType && contentType.includes("application/xml")) {
+                    // Basic XML highlighting
+                     outputElement.innerHTML = dataText
+                        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/(&lt;[a-zA-Z0-9_]+)/g, '<span style="color: #79c0ff;">$1</span>')
+                        .replace(/(&gt;)/g, '<span style="color: #79c0ff;">$1</span>')
+                        .replace(/(&lt;\/[a-zA-Z0-9_]+&gt;)/g, '<span style="color: #79c0ff;">$1</span>')
+                        .replace(/(\?xml.+?\?)/g, '<span style="color: #ffab70;">$1</span>');
+                } 
+                else {
+                    outputElement.textContent = dataText;
+                }
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                outputElement.innerHTML = `<span style="color: #ff7b72;">Ett fel uppstod: ${error.message}</span>`;
+            }
+        }
+        
+        function syntaxHighlight(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = '#a5d6ff'; // number
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = '#79c0ff'; // key
+                    } else {
+                        cls = '#ffab70'; // string
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = '#ffab70'; // boolean
+                } else if (/null/.test(match)) {
+                    cls = '#8b949e'; // null
+                }
+                return '<span style="color:' + cls + '">' + match + '</span>';
+            });
+        }
+
+        function copyOutput() {
+            const textToCopy = document.getElementById('json-output').textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => showToast('Innehåll kopierat!'));
+        }
+
+        function copyCurl() {
+            const curlCommand = `curl -X GET "${generatedUrl}"`;
+            navigator.clipboard.writeText(curlCommand).then(() => showToast('cURL-kommando kopierat!'));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = "toast show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // Initial fetch
+        document.addEventListener('DOMContentLoaded', fetchData);
     </script>
     <script>
         function updateNavLinks() {
