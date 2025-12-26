@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrera Konto | Luhn.se</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container nav-content">
+            <a href="/" class="logo">luhn<span>.se</span></a>
+            <div class="nav-links">
+                <a href="/login.html">Logga In</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container" style="max-width: 400px; margin-top: 50px;">
+        <section class="hero">
+            <h1>Skapa ett konto</h1>
+            <p class="subtitle">Få tillgång till fler funktioner och högre gränser.</p>
+        </section>
+
+        <form id="register-form" class="auth-form">
+            <div class="form-group">
+                <label for="email">E-post</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Lösenord</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="passwordConfirm">Bekräfta Lösenord</label>
+                <input type="password" id="passwordConfirm" name="passwordConfirm" required>
+            </div>
+            <button type="submit" class="action-btn">Registrera</button>
+            <p id="error-message" class="error-text"></p>
+        </form>
+    </main>
+
+    <script src="https://unpkg.com/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    <script src="/auth.js"></script>
+</body>
+</html>

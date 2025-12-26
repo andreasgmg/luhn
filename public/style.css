@@ -54,13 +54,27 @@ h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 15px; line-height: 1.1;
 .controls { width: 280px; border-right: 1px solid var(--border-color); padding: 20px; display: flex; flex-direction: column; flex-shrink: 0; box-sizing: border-box; }
 .control-group { margin-bottom: 20px; }
 .control-label { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-select, input[type="text"], input[type="email"] { width: 100%; padding: 10px; background: #0d1117; color: white; border: 1px solid #30363d; border-radius: 6px; outline: none; font-family: inherit; box-sizing: border-box; }
+select, input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 10px; background: #0d1117; color: white; border: 1px solid #30363d; border-radius: 6px; outline: none; font-family: inherit; box-sizing: border-box; }
 button.action-btn { width: 100%; background: var(--accent); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: auto; transition: all 0.2s; }
 button.action-btn:hover { background: #2368c9; transform: translateY(-1px); }
 .code-output { flex-grow: 1; padding: 20px; background: #0d1117; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #e6edf3; box-sizing: border-box; width: 100%; cursor: pointer; position: relative; }
 .code-output:hover { background: #13171e; }
 .code-output::after { content: "Klicka för att kopiera"; position: absolute; top: 10px; right: 10px; font-size: 0.7rem; color: #8b949e; opacity: 0.5; pointer-events: none; }
 .key { color: var(--purple); } .string { color: var(--green); } .number { color: var(--orange); } .boolean { color: var(--accent); } .null { color: var(--red); }
+
+/* AUTH FORMS & PROFILE */
+.auth-form { display: flex; flex-direction: column; gap: 15px; }
+.form-group { text-align: left; }
+.form-group label { display: block; font-size: 0.9rem; margin-bottom: 5px; color: var(--text-secondary); }
+.error-text { color: var(--red); font-size: 0.9rem; margin-top: 10px; min-height: 1.2em; text-align: center; }
+.profile-details { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 30px; max-width: 600px; margin: 20px auto; text-align: left; }
+.profile-details p { margin: 0 0 15px 0; }
+.plan-badge { background: var(--accent); color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; text-transform: capitalize; }
+.api-key-box { background: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; color: var(--green); word-break: break-all; cursor: pointer; }
+.api-key-box:hover { background: #010409; }
+.profile-details hr { border: none; border-top: 1px solid var(--border-color); margin: 25px 0; }
+.profile-details small { color: var(--text-secondary); font-size: 0.8rem; }
+
 
 /* FEATURES GRID */
 .features-section { padding: 60px 0; border-top: 1px solid var(--border-color); }
