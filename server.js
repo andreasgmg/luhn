@@ -121,7 +121,7 @@ try {
         pb.autoCancellation(false);
         console.log("✅ Pocketbase Admin client authenticated.");
     } catch (err) {
-        console.error("❌ CRITICAL: Pocketbase Admin client failed to authenticate.", err.message);
+        console.error("❌ CRITICAL: Pocketbase Admin client failed to authenticate.", err);
     }
 })();
 
