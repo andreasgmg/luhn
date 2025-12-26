@@ -300,10 +300,7 @@ app.get('/api/validate/:input', (req, res) => {
 });
 
 
-// Fallback for SPA routing if needed, but static should handle it.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+
 
 
 // Starta servern om filen körs direkt
