@@ -15,8 +15,13 @@ const PORT = process.env.PORT || 3000;
 
 // --- GLOBAL MIDDLEWARE ---
 app.use(cors());
-// Serve all static files (html, css, js) from the 'public' folder
-app.use(express.static(path.join(__dirname, 'public')));
+// --- NY KOD HÄR: Logga alla anrop ---
+app.use((req, res, next) => {
+    console.log(`📡 [${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+    next(); // Skickar vidare anropet till nästa funktion
+});
+// Lägg till { index: false } för att hindra den från att ladda index.html automatiskt
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 
 // --- STRIPE & POCKETBASE CLIENTS AND WEBHOOK ---
@@ -25,7 +30,7 @@ let stripe, pb;
 // Stripe webhook handler needs the raw body, so it's defined before express.json()
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     if (!stripe || !pb) return res.status(500).send("Server not fully initialized.");
-    
+
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
     let event;
@@ -36,7 +41,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         console.log(`Webhook signature verification failed: ${err.message}`);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-    
+
     console.log(`Received Stripe event: ${event.type}`);
 
     switch (event.type) {
@@ -45,7 +50,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
             const userId = session.client_reference_id;
             const stripeCustomerId = session.customer;
             const stripeSubscriptionId = session.subscription;
-            
+
             if (!userId) {
                 console.error("Webhook Error: No client_reference_id (userId) in completed session.");
                 break;
@@ -81,7 +86,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
                 const users = await pb.collection('users').getFullList({
                     filter: `stripe_subscription_id = "${subscription.id}"`,
                 });
-                
+
                 if (users && users.length > 0) {
                     const user = users[0];
                     await pb.collection('users').update(user.id, { plan: 'hobby' });
@@ -121,9 +126,9 @@ try {
 
 // --- API MIDDLEWARE ---
 const PLAN_LIMITS = {
-    hobby: { rate: 100,   bulk: 100,   name: "Hobby" },
-    pro:   { rate: 2000,  bulk: 10000, name: "Pro" },
-    team:  { rate: 10000, bulk: 10000, name: "Team" }
+    hobby: { rate: 100, bulk: 100, name: "Hobby" },
+    pro: { rate: 2000, bulk: 10000, name: "Pro" },
+    team: { rate: 10000, bulk: 10000, name: "Team" }
 };
 
 const identifyUser = async (req, res, next) => {
@@ -136,7 +141,7 @@ const identifyUser = async (req, res, next) => {
             if (user && PLAN_LIMITS[user.plan]) {
                 req.userContext = { type: user.plan, plan: PLAN_LIMITS[user.plan], identifier: apiKey };
             } else {
-                 return res.status(401).json({ error: true, message: "Ogiltig API-nyckel." });
+                return res.status(401).json({ error: true, message: "Ogiltig API-nyckel." });
             }
         } catch (err) {
             if (err.status === 404) {
@@ -215,19 +220,19 @@ app.get('/api/stripe-config', (req, res) => {
 const random = (arr, rng = Math.random) => arr[Math.floor(rng() * arr.length)];
 const randomInt = (min, max, rng = Math.random) => Math.floor(rng() * (max - min + 1)) + min;
 const mulberry32 = (a) => { return () => { var t = a += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; } }
-const cyrb128 = (str) => { let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762; for (let i = 0, k; i < str.length; i++) { k = str.charCodeAt(i); h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233); h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179); } h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233); h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179); return (h1^h2^h3^h4) >>> 0; }
+const cyrb128 = (str) => { let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762; for (let i = 0, k; i < str.length; i++) { k = str.charCodeAt(i); h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233); h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179); } h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233); h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179); return (h1 ^ h2 ^ h3 ^ h4) >>> 0; }
 const getRandomGenerator = (seed) => { if (seed) { const seedNumber = typeof seed === 'number' ? seed : cyrb128(String(seed)); return mulberry32(seedNumber); } return Math.random; };
 
 const toXML = (obj, rootName = "response") => {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<${rootName}>\n`;
     const parse = (items) => {
         let str = "";
-        if (Array.isArray(items)) { items.forEach(item => { str += `  <item>\n${parse(item)}  </item>\n`; }); } 
+        if (Array.isArray(items)) { items.forEach(item => { str += `  <item>\n${parse(item)}  </item>\n`; }); }
         else if (typeof items === 'object' && items !== null) {
             for (const key in items) {
                 if (items[key] === undefined || items[key] === null) continue;
                 str += `    <${key}>\n`;
-                if (typeof items[key] === 'object') { str += parse(items[key]); } else { str += `      ${String(items[key]).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}\n`; } 
+                if (typeof items[key] === 'object') { str += parse(items[key]); } else { str += `      ${String(items[key]).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}\n`; }
                 str += `    </${key}>\n`;
             }
         }
@@ -347,7 +352,7 @@ const generatePlusgiro = (rng) => {
         base += randomInt(0, 9, rng);
     }
     const checkDigit = calculateMod10Weighted(base, [7, 3, 1]); // Plusgiro weights
-    
+
     if (base.length === 6) {
         return `${base.slice(0, 2)} ${base.slice(2, 4)} ${base.slice(4)}-${checkDigit}`;
     } else if (base.length === 7) {
@@ -391,7 +396,7 @@ const generatePersonnummer = (rng, options = {}) => {
             birthNumCandidates.push(numStr);
         }
     }
-    
+
     // Fallback if no specific gender candidates are found (shouldn't happen for 0-999 range)
     if (birthNumCandidates.length === 0) {
         for (let i = 0; i <= 999; i++) birthNumCandidates.push(String(i).padStart(3, '0'));
@@ -412,7 +417,9 @@ const firstNames = ["Erik", "Lars", "Karl", "Anders", "Johan", "Per", "Nils", "M
 const lastNames = ["Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Larsson", "Olsson", "Persson", "Svensson", "Gustafsson"];
 const streets = ["Storgatan", "Drottninggatan", "Kungsgatan", "Sveavägen", "Vasagatan", "Linnégatan", "Odengatan", "Ringvägen", "Skolgatan", "Kyrkogatan"];
 
-const postalCodeData = [
+let postalCodeData = [];
+
+const FALLBACK_POSTAL_DATA = [
     { postnummer: "111 22", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
     { postnummer: "111 29", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
     { postnummer: "113 56", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
@@ -445,7 +452,7 @@ const postalCodeData = [
     { postnummer: "431 37", ort: "Mölndal", kommun: "Mölndal", län: "Västra Götalands län" },
     { postnummer: "451 50", ort: "Uddevalla", kommun: "Uddevalla", län: "Västra Götalands län" },
     { postnummer: "461 30", ort: "Trollhättan", kommun: "Trollhättan", län: "Västra Götalands län" },
-    
+
     { postnummer: "753 10", ort: "Uppsala", kommun: "Uppsala", län: "Uppsala län" },
     { postnummer: "754 40", ort: "Uppsala", kommun: "Uppsala", län: "Uppsala län" },
     { postnummer: "756 51", ort: "Uppsala", kommun: "Uppsala", län: "Uppsala län" },
@@ -463,26 +470,91 @@ const postalCodeData = [
     { postnummer: "852 36", ort: "Sundsvall", kommun: "Sundsvall", län: "Västernorrlands län" },
 ];
 
-const generateAddress = (rng, options = {}) => {
-    let filteredData = postalCodeData;
+const loadPostalData = () => {
+    const filePath = path.join(__dirname, 'data', 'postnummer.csv');
 
-    if (options.city) {
-        filteredData = filteredData.filter(item => item.ort.toLowerCase() === options.city.toLowerCase());
+    if (!fs.existsSync(filePath)) {
+        console.warn("⚠️  data/postnummer.csv saknas. Kör med begränsad fallback-data.");
+        console.warn("👉  Ladda ner riktig data: https://raw.githubusercontent.com/Axelsson2000/data/master/Pnr-Ort-Kommun-KnKod-LnNamn-Lat-Long-GM_202409.csv");
+        postalCodeData = FALLBACK_POSTAL_DATA;
+        return;
     }
-    // TODO: Add filtering for 'kommun' or 'lan' if needed in the future
 
-    const selectedLocation = random(filteredData.length > 0 ? filteredData : postalCodeData, rng); // Fallback to full list
+    try {
+        console.log("⏳ Läser in postnummerdatabas...");
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const lines = fileContent.split('\n');
+
+        // Hoppa över header-raden om den finns och mappa datan
+        postalCodeData = lines
+            .slice(1) // Skippa header
+            .map(line => {
+                // ÄNDRING HÄR: Byt från ';' till ','
+                const parts = line.split(',');
+
+                if (parts.length < 5) return null;
+                return {
+                    postnummer: parts[0].trim().replace(" ", ""), // Index 0 är Postnummer
+                    ort: parts[1].trim(),                         // Index 1 är Ort
+                    kommun: parts[2].trim(),                      // Index 2 är KnNamn (Kommun)
+                    län: parts[4].trim()                          // Index 4 är LnNamn (Län)
+                };
+            })
+            .filter(item => item !== null && item.postnummer.length === 5);
+
+        console.log(`✅ Postnummerdatabas laddad: ${postalCodeData.length} orter.`);
+    } catch (err) {
+        console.error("❌ Fel vid inläsning av postnummer.csv:", err.message);
+        postalCodeData = FALLBACK_POSTAL_DATA;
+    }
+};
+
+// Kör inläsningen direkt
+loadPostalData();
+
+const generateAddress = (rng, options = {}) => {
+    // SÄKERHETSKOLL: Använd fallback om databasen är tom
+    let sourceData = postalCodeData.length > 0 ? postalCodeData : FALLBACK_POSTAL_DATA;
+    let filteredData = sourceData;
+
+    // Filtrera på stad om parametern ?city=... används
+    if (options.city) {
+        const searchCity = options.city.trim().toLowerCase();
+        
+        filteredData = filteredData.filter(item => item.ort.toLowerCase() === searchCity);
+
+        // DEBUG: Om vi inte hittar något, logga varför i terminalen
+        if (filteredData.length === 0) {
+            console.log(`⚠️  VARNING: Hittade ingen stad som matchade "${options.city}" (sökte efter "${searchCity}").`);
+            console.log(`ℹ️  Första 3 orterna i databasen är: ${sourceData.slice(0, 3).map(i => `"${i.ort}"`).join(', ')}`);
+            
+            // Fallback: Använd hela listan igen så koden inte kraschar
+            filteredData = sourceData; 
+        }
+    }
+    
+    // Slumpa en plats
+    const selectedLocation = random(filteredData, rng);
+
+    // Om något gick snett och vi inte fick en träff alls (extremt kantfall)
+    if (!selectedLocation) {
+        return { gata: "Storgatan 1", postnummer: "111 22", ort: "Stockholm", kommun: "Stockholm", lan: "Stockholms län" };
+    }
+
+    // Formatera postnumret (12345 -> 123 45)
+    const pnr = selectedLocation.postnummer;
+    const formattedPnr = `${pnr.slice(0, 3)} ${pnr.slice(3)}`;
 
     return { 
         gata: `${random(streets, rng)} ${randomInt(1, 150, rng)}`, 
-        postnummer: selectedLocation.postnummer, 
+        postnummer: formattedPnr, 
         ort: selectedLocation.ort,
         kommun: selectedLocation.kommun,
-        lan: selectedLocation.län
+        lan: selectedLocation.län || selectedLocation.lan
     };
 };
 
-const bankData = [ { name: "Swedbank", clearing: [7000, 7999] }, { name: "Handelsbanken", clearing: [6000, 6999] }, { name: "SEB", clearing: [5000, 5999] }, { name: "Nordea", clearing: [1100, 1199] }, ];
+const bankData = [{ name: "Swedbank", clearing: [7000, 7999] }, { name: "Handelsbanken", clearing: [6000, 6999] }, { name: "SEB", clearing: [5000, 5999] }, { name: "Nordea", clearing: [1100, 1199] },];
 const mod97 = (str) => {
     let checksum = "";
     for (let i = 0; i < str.length; i++) {
@@ -492,7 +564,7 @@ const mod97 = (str) => {
 };
 const generateIban = (rng) => { const bank = random(bankData, rng); const clearing = randomInt(bank.clearing[0], bank.clearing[1], rng); const account = ('' + randomInt(1, 999999999, rng)).padStart(10, '0'); const bban = `${clearing}0000${account}`.slice(0, 20); const numericIban = bban.split('').map(c => c.charCodeAt(0) - 55).join('') + '281400'; let checksum = 98 - mod97(numericIban); return `SE${String(checksum).padStart(2, '0')}${clearing}${account}`.slice(0, 24); };
 
-const createPerson = (rng, options) => { const fn = random(firstNames, rng); const ln = random(lastNames, rng); const cleanName = (str) => str.toLowerCase().replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o'); return { id: randomInt(1, 999999, rng), namn: `${fn} ${ln}`, personnummer: generatePersonnummer(rng, options), ...generateAddress(rng), kontakt: { mobil: `070-17406${randomInt(5, 99, rng).toString().padStart(2, '0')}`, email: `${cleanName(fn)}.${cleanName(ln)}@luhn.se` } }; };
+const createPerson = (rng, options) => { const fn = random(firstNames, rng); const ln = random(lastNames, rng); const cleanName = (str) => str.toLowerCase().replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o'); return { id: randomInt(1, 999999, rng), namn: `${fn} ${ln}`, personnummer: generatePersonnummer(rng, options), ...generateAddress(rng, options), kontakt: { mobil: `070-17406${randomInt(5, 99, rng).toString().padStart(2, '0')}`, email: `${cleanName(fn)}.${cleanName(ln)}@luhn.se` } }; };
 
 const companyNamePrefixes = ["Nordic", "Svenska", "Global", "Stockholm", "Göteborgs", "Malmö", "Digitala", "Kreativa", "Svea", "Modern"];
 const companyNameKeywords = ["Konsult", "Teknik", "Solutions", "Bygg", "Finans", "Media", "Design", "IT", "Partner", "Gruppen", "Invest"];
@@ -517,13 +589,13 @@ const createCompany = (rng) => {
         }
     }
 
-    return { 
-        id: randomInt(1, 999999, rng), 
-        foretag: name, 
+    return {
+        id: randomInt(1, 999999, rng),
+        foretag: name,
         bolagsform: legalForm,
-        orgnummer: generateOrgNummer(rng), 
-        ...generateAddress(rng) 
-    }; 
+        orgnummer: generateOrgNummer(rng),
+        ...generateAddress(rng)
+    };
 };
 
 const vehicleData = [
@@ -566,19 +638,19 @@ const generateRegnummer = (rng) => {
     reg += lastChars.charAt(Math.floor(rng() * lastChars.length));
     return reg;
 };
-const createVehicle = (rng) => { 
+const createVehicle = (rng) => {
     const vehicleIndex = Math.floor(rng() * vehicleData.length);
     console.log("DEBUG: createVehicle - Picking vehicle at index:", vehicleIndex);
     const vehicle = vehicleData[vehicleIndex];
-    return { 
-        id: randomInt(1, 999999, rng), 
-        regnummer: generateRegnummer(rng), 
-        typ: vehicle.typ, 
-        modell: vehicle.modell 
-    }; 
+    return {
+        id: randomInt(1, 999999, rng),
+        regnummer: generateRegnummer(rng),
+        typ: vehicle.typ,
+        modell: vehicle.modell
+    };
 };
 
-const createCard = (rng) => { const brand = random(['Visa', 'Mastercard'], rng); return { id: randomInt(1, 999999, rng), typ: "Kreditkort", brand: brand, nummer: generateCreditCard(brand, rng), cvv: randomInt(100, 999, rng).toString(), exp: `${randomInt(1, 12, rng).toString().padStart(2,'0')}/${randomInt(25, 30, rng)}` }; };
+const createCard = (rng) => { const brand = random(['Visa', 'Mastercard'], rng); return { id: randomInt(1, 999999, rng), typ: "Kreditkort", brand: brand, nummer: generateCreditCard(brand, rng), cvv: randomInt(100, 999, rng).toString(), exp: `${randomInt(1, 12, rng).toString().padStart(2, '0')}/${randomInt(25, 30, rng)}` }; };
 const createDevice = (rng) => { return { id: randomInt(1, 999999, rng), typ: "Mobiltelefon", imei: generateIMEI(rng), modell: "iPhone 15" }; };
 const createFinance = (rng) => { const bank = random(bankData, rng); return { id: randomInt(1, 999999, rng), bank: bank.name, iban: generateIban(rng), typ: "Lönekonto" }; };
 const createIdentity = (rng, options) => { const person = createPerson(rng, options); delete person.id; return { id: randomInt(1, 999999, rng), person, kort: createCard(rng), enhet: createDevice(rng), fordon: createVehicle(rng), }; };
@@ -600,16 +672,26 @@ const createBankIdMock = (rng) => {
 
 
 const handleResponse = async (req, res, dataFunction, options = {}) => {
+    // --- NY LOGIK: Feature Gating för Hobby-användare ---
+    if (req.query.format && ['xml', 'csv', 'sql'].includes(req.query.format)) {
+        if (!req.userContext || req.userContext.type === 'hobby') {
+            return res.status(403).json({
+                error: true,
+                message: `Formatet '${req.query.format}' kräver Pro- eller Team-plan. Uppgradera på https://luhn.se/profile`
+            });
+        }
+    }
+
     let rng = Math.random;
     if (req.query.seed) rng = getRandomGenerator(req.query.seed);
     else if (req.params.id) rng = getRandomGenerator(req.params.id);
 
     if (req.query.delay) await new Promise(r => setTimeout(r, parseInt(req.query.delay)));
     if (req.query.status) { const code = parseInt(req.query.status); if (code >= 400) return res.status(code).json({ error: true, message: "Simulerat fel från Luhn.se", code: code }); }
-    
+
     const amount = parseInt(req.query.amount) || 1;
     const planLimit = req.userContext ? req.userContext.plan.bulk : 100;
-    const limit = Math.min(amount, planLimit); 
+    const limit = Math.min(amount, planLimit);
 
     let data = limit === 1 ? dataFunction(rng, options) : Array.from({ length: limit }, () => dataFunction(rng, options));
     if (req.params.id && !Array.isArray(data)) data.id = parseInt(req.params.id);
@@ -628,16 +710,18 @@ const handleResponse = async (req, res, dataFunction, options = {}) => {
     res.json(data);
 };
 
-const getScenarioOptions = (req) => ({ 
-    invalidRate: parseInt(req.query.invalidRate) || 0, 
-    city: req.query.city, 
-    minAge: parseInt(req.query.minAge), 
+const getScenarioOptions = (req) => ({
+    invalidRate: parseInt(req.query.invalidRate) || 0,
+    city: req.query.city,
+    minAge: parseInt(req.query.minAge),
     maxAge: parseInt(req.query.maxAge),
     gender: req.query.gender // Add gender parameter
 });
 
 // --- PAGE ROUTES ---
 // Serve clean URLs for static pages
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'coming-soon.html')));
+app.get('/d', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/docs', (req, res) => res.sendFile(path.join(__dirname, 'public', 'docs.html')));
 app.get('/luhn-algoritmen', (req, res) => res.sendFile(path.join(__dirname, 'public', 'luhn-algoritmen.html')));
 app.get('/terms', (req, res) => res.sendFile(path.join(__dirname, 'public', 'terms.html')));
@@ -663,6 +747,15 @@ app.get('/api/bankgiro', (req, res) => handleResponse(req, res, (rng) => ({ bank
 app.get('/api/plusgiro', (req, res) => handleResponse(req, res, (rng) => ({ plusgiro: generatePlusgiro(rng) })));
 
 app.post('/api/mask', (req, res) => {
+    // --- NY LOGIK: Feature Gating för Hobby-användare ---
+    if (!req.userContext || req.userContext.type === 'hobby') {
+        return res.status(403).json({
+            error: true,
+            message: "Data Maskning kräver Pro- eller Team-plan. Uppgradera på https://luhn.se/profile"
+        });
+    }
+    // ----------------------------------------------------
+
     const data = req.body.data || [];
     if (!Array.isArray(data)) return res.status(400).json({ error: true, message: "Input måste vara en array i 'data'." });
     res.json({ success: true, maskedData: data.map(item => ({ masked: maskPersonnummer(item, req.query.seed), isValid: isValidLuhn(maskPersonnummer(item, req.query.seed)) })) });
