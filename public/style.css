@@ -15,6 +15,35 @@ header { border-bottom: 1px solid var(--border-color); padding: 20px 0; backdrop
 .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.95rem; font-weight: 500; margin-left: 25px; transition: color 0.2s; }
 .nav-links a:hover { color: white; }
 
+/* Dropdown Menu */
+.nav-item { position: relative; }
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 0;
+    min-width: 220px;
+    z-index: 101;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.nav-item:hover .dropdown-menu { display: block; }
+.dropdown-menu a {
+    display: block;
+    padding: 10px 20px;
+    margin: 0;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+.dropdown-menu a:hover {
+    background-color: var(--accent);
+    color: white;
+}
+
+
 /* HERO */
 .hero { padding: 80px 0 60px; text-align: center; position: relative; overflow: hidden; }
 h1 { font-size: 3.5rem; font-weight: 800; margin-bottom: 15px; line-height: 1.1; background: linear-gradient(180deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; word-wrap: break-word; }

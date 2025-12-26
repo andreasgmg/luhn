@@ -12,9 +12,16 @@
         <div class="container nav-content">
             <a href="/" class="logo">luhn<span>.se</span></a>
             <div id="nav-links-container" class="nav-links">
-                <a href="/docs.html">Dokumentation</a>
+                <div class="nav-item">
+                    <a href="#">Generatorer</a>
+                    <div class="dropdown-menu">
+                        <a href="/personnummer-generator">Personnummer</a>
+                        <a href="/organisationsnummer-generator">Organisationsnummer</a>
+                    </div>
+                </div>
+                <a href="/docs">Dokumentation</a>
                 <a href="/#pricing">Priser</a>
-                <a href="/profile.html" style="margin-left: 30px; font-weight: bold; color: white;">Min Profil</a>
+                <a href="/profile" style="margin-left: 30px; font-weight: bold; color: white;">Min Profil</a>
                 <a href="#"><button id="logout-btn" class="action-btn outline-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Logga Ut</button></a>
             </div>
         </div>
@@ -33,5 +40,24 @@
 
     <script src="/pocketbase.umd.js"></script>
     <script src="/auth.js"></script>
+    <script src="/nav.js"></script>
+    <script>
+        // Docs-specific JS
+        function copyCode(el) {
+            navigator.clipboard.writeText(el.innerText).then(() => {
+                const toast = document.getElementById('toast');
+                toast.innerText = "Kopierat! 📋";
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.pb) {
+                // Ensure updateNavLinks is called after pb is initialized.
+                // It will be called by nav.js directly.
+            }
+        });
+    </script>
 </body>
 </html>

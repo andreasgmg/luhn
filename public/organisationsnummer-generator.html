@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organisationsnummergenerator | Luhn.se</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="Generera giltiga svenska organisationsnummer för testning.">
+    <meta property="og:title" content="Organisationsnummergenerator | Luhn.se">
+    <meta property="og:description" content="Generera giltiga svenska organisationsnummer för testning.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇸🇪</text></svg>">
+</head>
+
+<body>
+    <header>
+        <div class="container nav-content">
+            <a href="/" class="logo">luhn<span>.se</span></a>
+            <div id="nav-links-container" class="nav-links">
+                <div class="nav-item">
+                    <a href="#">Generatorer</a>
+                    <div class="dropdown-menu">
+                        <a href="/personnummer-generator.html">Personnummer</a>
+                        <a href="/organisationsnummer-generator.html">Organisationsnummer</a>
+                    </div>
+                </div>
+                <a href="/docs.html">Dokumentation</a>
+                <a href="/#pricing">Priser</a>
+                <a href="mailto:hej@luhn.se">Kontakt</a>
+                <a href="/login.html" style="margin-left: 30px;">Logga In</a>
+                <a href="/register.html"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <h1>Organisationsnummergenerator</h1>
+            <p class="subtitle">Generera giltiga svenska organisationsnummer för dina testfall.</p>
+        </section>
+
+        <div class="generator-window">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Antal</label>
+                    <input type="number" id="amount" value="5" min="1" max="100">
+                </div>
+                <button class="action-btn" onclick="fetchData()">Generera ▶</button>
+            </div>
+            <div class="code-output">
+                <pre id="json-output"><span style="color: #8b949e;">Klicka på "Generera" för att skapa organisationsnummer...</span></pre>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Luhn.se</p>
+        </div>
+    </footer>
+
+    <script src="/pocketbase.umd.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/nav.js"></script>
+    <script>
+        async function fetchData() {
+            const amount = document.getElementById('amount').value;
+            const outputElement = document.getElementById('json-output');
+
+            outputElement.innerHTML = '<span style="color: #8b949e;">Laddar data...</span>';
+
+            const params = new URLSearchParams();
+            if (amount) params.append('amount', amount);
+
+            try {
+                const response = await fetch(`/api/company?${params.toString()}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    outputElement.textContent = JSON.stringify(data, null, 2);
+                    return;
+                }
+                
+                const orgnummers = data.map(c => c.orgnummer).join('\n');
+                outputElement.textContent = orgnummers;
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                outputElement.innerHTML = `<span style="color: #ff7b72;">Ett fel uppstod: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

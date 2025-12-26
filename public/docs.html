@@ -17,8 +17,15 @@
         <div class="container nav-content">
             <a href="/" class="logo">luhn<span>.se</span></a>
             <div id="nav-links-container" class="nav-links">
-                 <a href="/">Generatorn</a>
-                 <a href="mailto:hej@luhn.se">Kontakt</a>
+                <div class="nav-item">
+                    <a href="#">Generatorer</a>
+                    <div class="dropdown-menu">
+                        <a href="/personnummer-generator.html">Personnummer</a>
+                        <a href="/organisationsnummer-generator.html">Organisationsnummer</a>
+                    </div>
+                </div>
+                <a href="/docs.html">Dokumentation</a>
+                <a href="mailto:hej@luhn.se">Kontakt</a>
                  <a href="/login" style="margin-left: 30px;">Logga In</a>
                  <a href="/register"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
             </div>
@@ -34,10 +41,13 @@
                     <li><a href="#rate-limits">Rate Limits</a></li>
                     <li><a href="#global-parameters">Globala Parametrar</a></li>
                     <li><a href="#scenario-builder">Scenario Builder</a></li>
+                    <li><a href="#code-examples">Kodexempel</a></li>
                     <li class="group-header">Core Generators</li>
                     <li><a href="#person">Person</a></li>
                     <li><a href="#company">Företag</a></li>
                     <li><a href="#finance">Ekonomi</a></li>
+                    <li><a href="#bankgiro-link">Bankgiro</a></li>
+                    <li><a href="#plusgiro-link">Plusgiro</a></li>
                     <li><a href="#vehicle">Fordon</a></li>
                     <li><a href="#creditcard">Kreditkort</a></li>
                     <li><a href="#imei">IMEI</a></li>
@@ -46,6 +56,7 @@
                     <li><a href="#bankid">BankID Mock</a></li>
                     <li class="group-header">Verktyg</li>
                     <li><a href="#validator">Validator</a></li>
+                    <li><a href="#bulk-validator">Bulk Validator</a></li>
                     <li><a href="#masking">Data Maskning</a></li>
                 </ul>
             </nav>
@@ -55,14 +66,14 @@
             <section id="introduction">
                 <h2>Introduktion</h2>
                 <p>Välkommen till dokumentationen för Luhn.se, ett API för att generera svensk test- och mockdata. API:et är designat för att vara enkelt att använda och förutsägbart.</p>
-                <p>Alla GET-endpoints returnerar data i JSON-format som standard. För de flesta endpoints kan du även få svar i XML-format genom att lägga till <code>?format=xml</code> i din anrops-URL.</p>
+                <p>Alla GET-endpoints returnerar data i JSON-format som standard. För de flesta endpoints kan du även få svar i XML, CSV eller SQL-format genom att lägga till <code>?format=xml</code>, <code>?format=csv</code> eller <code>?format=sql</code> i din anrops-URL.</p>
             </section>
 
             <section id="authentication">
                 <h2>Autentisering</h2>
                 <p>För att få tillgång till högre rate limits (Pro- och Team-planer) behöver du autentisera dig med en API-nyckel. Du hittar din nyckel på din <a href="/profile">profilsida</a> efter att du har startat en prenumeration.</p>
-                <p>Skicka med din API-nyckel i en `x-api-key` header i dina anrop:</p>
-                <div class="code-block">curl "https://luhn.se/api/person" -H "x-api-key: YOUR_API_KEY"</div>
+                <p>Skicka med din API-nyckel i en <code>x-api-key</code> header i dina anrop:</p>
+                <div class="code-block" onclick="copyCode(this)">curl "https://luhn.se/api/person" -H "x-api-key: YOUR_API_KEY"</div>
                  <p>Om du inte skickar med en nyckel kommer du att använda den generösa "Hobby"-planen, där din IP-adress används för rate limiting.</p>
             </section>
 
@@ -85,7 +96,7 @@
                         <tr><td>seed</td><td>Använd ett "frö" för att få deterministisk (samma) data vid varje anrop.</td><td><code>?seed=test123</code></td></tr>
                         <tr><td>delay</td><td>Simulera nätverkslagg genom att fördröja svaret (i millisekunder).</td><td><code>?delay=1500</code></td></tr>
                         <tr><td>status</td><td>Tvinga servern att svara med en specifik HTTP-statuskod för att testa felhantering.</td><td><code>?status=500</code></td></tr>
-                        <tr><td>format</td><td>Få svaret i XML-format istället för JSON.</td><td><code>?format=xml</code></td></tr>
+                        <tr><td>format</td><td>Få svaret i XML, CSV eller SQL-format.</td><td><code>?format=csv</code></td></tr>
                     </tbody>
                 </table>
             </section>
@@ -98,10 +109,42 @@
                     <tbody>
                         <tr><td>minAge</td><td>Minsta ålder på de genererade personerna.</td><td><code>?minAge=18</code></td></tr>
                         <tr><td>maxAge</td><td>Högsta ålder på de genererade personerna.</td><td><code>?maxAge=65</code></td></tr>
+                        <tr><td>gender</td><td>Generera ett specifikt kön.</td><td><code>?gender=female</code></td></tr>
                         <tr><td>city</td><td>Generera endast personer med adresser i en specifik stad (t.ex. Stockholm, Göteborg, Malmö).</td><td><code>?city=Malmö</code></td></tr>
                         <tr><td>invalidRate</td><td>En procentsats (0-100) för chansen att ett genererat personnummer är medvetet ogiltigt.</td><td><code>?invalidRate=10</code></td></tr>
                     </tbody>
                 </table>
+            </section>
+
+            <section id="code-examples">
+                <h2>Kodexempel</h2>
+                <p>Här är några snabba exempel för att komma igång.</p>
+
+                <h4>cURL (Terminal)</h4>
+                <p>Hämta 5 personer i CSV-format.</p>
+                <div class="code-block" onclick="copyCode(this)">curl "https://luhn.se/api/person?amount=5&format=csv"</div>
+                
+                <h4>JavaScript (Fetch API)</h4>
+                <p>Hämta en person och logga namnet i konsolen.</p>
+                <div class="code-block" onclick="copyCode(this)">fetch('https://luhn.se/api/person')
+  .then(response => response.json())
+  .then(data => {
+    console.log(data.namn); 
+  });</div>
+
+                <h4>Node.js</h4>
+                <p>Hämta 100 företag och spara till en `companies.json`-fil.</p>
+                <div class="code-block" onclick="copyCode(this)">const fetch = require('node-fetch');
+const fs = require('fs');
+
+async function getCompanies() {
+    const response = await fetch('https://luhn.se/api/company?amount=100');
+    const data = await response.json();
+    fs.writeFileSync('companies.json', JSON.stringify(data, null, 2));
+    console.log('Successfully saved 100 companies to companies.json');
+}
+
+getCompanies();</div>
             </section>
             
              <section id="person">
@@ -112,12 +155,71 @@
             
             <section id="company">
                  <h3>Företag</h3>
-                <p>Genererar svenska aktiebolag med giltiga organisations- och momsnummer.</p>
+                <p>Genererar svenska företag med giltiga organisationsnummer och varierande bolagsformer.</p>
                 <div class="code-block" onclick="copyCode(this)">GET /api/company</div>
             </section>
-            
-            <!-- Add all other sections here -->
 
+            <section id="bankgiro-link">
+                 <h3>Bankgiro</h3>
+                <p>Genererar ett slumpmässigt, giltigt Bankgironummer.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/bankgiro</div>
+            </section>
+
+            <section id="plusgiro-link">
+                 <h3>Plusgiro</h3>
+                <p>Genererar ett slumpmässigt, giltigt Plusgironummer.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/plusgiro</div>
+            </section>
+            
+            <!-- Other sections -->
+            <section id="vehicle">
+                <h3>Fordon</h3>
+                <p>Genererar ett fordon med giltigt registreringsnummer.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/vehicle</div>
+            </section>
+            <section id="creditcard">
+                <h3>Kreditkort</h3>
+                <p>Genererar ett giltigt test-kreditkortsnummer (Visa eller Mastercard).</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/creditcard</div>
+            </section>
+            <section id="imei">
+                <h3>IMEI</h3>
+                <p>Genererar ett giltigt IMEI-nummer för en mobil enhet.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/imei</div>
+            </section>
+            <section id="identity">
+                <h3>Hel Identitet</h3>
+                <p>Kombinerar flera generatorer för att skapa en komplett påhittad identitet.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/identity</div>
+            </section>
+            <section id="bankid">
+                <h3>BankID Mock</h3>
+                <p>Simulerar ett initialt svar från BankID API:et vid en auth/sign-begäran.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/bankid</div>
+            </section>
+            <section id="validator">
+                <h3>Validator</h3>
+                <p>Validerar ett enskilt nummer (PNR, OrgNr, etc.) enligt Luhn-algoritmen.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/validate/8112189876</div>
+            </section>
+             <section id="bulk-validator">
+                <h3>Bulk Validator</h3>
+                <p>Validera en lista av nummer (personnummer, organisationsnummer, etc.) i ett enda anrop.</p>
+                <div class="code-block" onclick="copyCode(this)">POST /api/validate/bulk</div>
+                <p>Skicka en JSON-body med en array av strängar under nyckeln "numbers":</p>
+                <div class="code-block" onclick="copyCode(this)">{
+  "numbers": [
+    "811218-9876",
+    "556614-3185",
+    "12345"
+  ]
+}</div>
+            </section>
+            <section id="masking">
+                <h3>Data Maskning</h3>
+                <p>Maskera ett personnummer för att kunna visa det publikt utan att röja privat data.</p>
+                <div class="code-block" onclick="copyCode(this)">POST /api/mask</div>
+            </section>
         </main>
     </div>
 
@@ -131,6 +233,7 @@
 
     <script src="/pocketbase.umd.js"></script>
     <script src="/auth.js"></script>
+    <script src="/nav.js"></script>
     <script>
         // Docs-specific JS
         function copyCode(el) {
@@ -143,24 +246,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Logic to handle nav links
-            const pb = window.pb;
-            const navLinksContainer = document.getElementById('nav-links-container');
-            if (navLinksContainer && pb) {
-                if (pb.authStore.isValid) {
-                    navLinksContainer.innerHTML = `
-                        <a href="/">Generatorn</a>
-                        <a href="/profile" style="margin-left: 30px;">Min Profil</a>
-                        <a href="#"><button id="logout-btn-nav" class="action-btn outline-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Logga Ut</button></a>
-                    `;
-                    document.getElementById('logout-btn-nav').addEventListener('click', (e) => {
-                        e.preventDefault();
-                        pb.authStore.clear();
-                        window.location.href = '/';
-                    });
-                }
-            }
-
             // Logic for sticky nav and scrollspy
             const nav = document.getElementById('docs-nav');
             const sections = document.querySelectorAll('.docs-content section');

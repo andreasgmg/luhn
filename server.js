@@ -7,6 +7,8 @@ const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 const Stripe = require('stripe');
 const PocketBase = require('pocketbase/cjs');
+const crypto = require('crypto'); // Added for UUID generation
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -107,7 +109,7 @@ try {
 
 (async () => {
     try {
-        pb = new PocketBase(process.env.POCKETBASE_URL);
+        pb = new PocketBase(process.env.POCKETBASE_URL || 'https://pb.luhn.se');
         await pb.admins.authWithPassword(process.env.POCKETBASE_ADMIN_EMAIL, process.env.POCKETBASE_ADMIN_PASSWORD);
         pb.autoCancellation(false);
         console.log("✅ Pocketbase Admin client authenticated.");
@@ -223,8 +225,9 @@ const toXML = (obj, rootName = "response") => {
         if (Array.isArray(items)) { items.forEach(item => { str += `  <item>\n${parse(item)}  </item>\n`; }); } 
         else if (typeof items === 'object' && items !== null) {
             for (const key in items) {
+                if (items[key] === undefined || items[key] === null) continue;
                 str += `    <${key}>\n`;
-                if (typeof items[key] === 'object') { str += parse(items[key]); } else { str += `      ${items[key]}\n`; } 
+                if (typeof items[key] === 'object') { str += parse(items[key]); } else { str += `      ${String(items[key]).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')}\n`; } 
                 str += `    </${key}>\n`;
             }
         }
@@ -235,10 +238,172 @@ const toXML = (obj, rootName = "response") => {
     return xml;
 };
 
+const toCSV = (data) => {
+    if (!Array.isArray(data) || data.length === 0) {
+        return "";
+    }
+
+    const flattenObject = (obj, prefix = '') => {
+        return Object.keys(obj).reduce((acc, k) => {
+            const pre = prefix.length ? prefix + '.' : '';
+            if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+                Object.assign(acc, flattenObject(obj[k], pre + k));
+            } else {
+                acc[pre + k] = obj[k];
+            }
+            return acc;
+        }, {});
+    };
+
+    const flattenedData = data.map(item => flattenObject(item));
+
+    const headers = Array.from(new Set(flattenedData.flatMap(Object.keys)));
+
+    const escapeCSV = (value) => {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        let strValue = String(value);
+        if (strValue.includes(',') || strValue.includes('"') || strValue.includes('\n')) {
+            return `"${strValue.replace(/"/g, '""')}"`;
+        }
+        return strValue;
+    };
+
+    let csv = headers.map(escapeCSV).join(',') + '\n';
+
+    flattenedData.forEach(row => {
+        csv += headers.map(header => escapeCSV(row[header])).join(',') + '\n';
+    });
+
+    return csv;
+};
+
+const toSQLInsert = (data, tableName) => {
+    if (!Array.isArray(data) || data.length === 0) {
+        return "";
+    }
+
+    const flattenObject = (obj, prefix = '') => {
+        return Object.keys(obj).reduce((acc, k) => {
+            const pre = prefix.length ? prefix + '_' : ''; // Use underscore for SQL column names
+            if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+                Object.assign(acc, flattenObject(obj[k], pre + k));
+            } else {
+                acc[pre + k] = obj[k];
+            }
+            return acc;
+        }, {});
+    };
+
+    const flattenedData = data.map(item => flattenObject(item));
+
+    const columns = Array.from(new Set(flattenedData.flatMap(Object.keys)));
+    const quotedColumns = columns.map(col => `\`${col}\``).join(', ');
+
+    let sql = [];
+
+    flattenedData.forEach(row => {
+        const values = columns.map(col => {
+            const value = row[col];
+            if (value === null || value === undefined) {
+                return 'NULL';
+            }
+            if (typeof value === 'string') {
+                return `'${value.replace(/'/g, "''")}'`; // Escape single quotes
+            }
+            return value; // Numbers, booleans (might need conversion to 0/1)
+        });
+        sql.push(`INSERT INTO \`${tableName}\` (${quotedColumns}) VALUES (${values.join(', ')});`);
+    });
+
+    return sql.join('\n');
+};
+
 const calculateLuhn = (str) => { let sum = 0; for (let i = 0; i < str.length; i++) { let v = parseInt(str[i]); v *= 2 - (i % 2); if (v > 9) v -= 9; sum += v; } return (10 - (sum % 10)) % 10; };
+const calculateMod10Weighted = (str, weights) => {
+    let sum = 0;
+    for (let i = 0; i < str.length; i++) {
+        const digit = parseInt(str[str.length - 1 - i]);
+        sum += digit * weights[i % weights.length];
+    }
+    return (10 - (sum % 10)) % 10;
+};
 const isValidLuhn = (str) => { if (!str) return false; let clean = str.replace(/[-+]/g, ''); if (clean.length === 12) { const century = parseInt(clean.slice(0, 2)); if (century >= 16 && century <= 20) clean = clean.slice(2); } if (clean.length === 0) return false; const base = clean.slice(0, -1); const control = parseInt(clean.slice(-1)); return calculateLuhn(base) === control; };
 
-const generatePersonnummer = (rng, options = {}) => { if (options.invalidRate > 0 && rng() * 100 < options.invalidRate) { const pnr = generatePersonnummer(rng).split('-'); const base = pnr[0] + pnr[1].slice(0, -1); const correctDigit = calculateLuhn(base); const wrongDigit = (correctDigit + randomInt(1, 9, rng)) % 10; return `${pnr[0]}-${pnr[1].slice(0, -1)}${wrongDigit} (INVA)`; } const currentYear = new Date().getFullYear(); let minAge = (typeof options.minAge === 'number' && !Number.isNaN(options.minAge)) ? options.minAge : 18; let maxAge = (typeof options.maxAge === 'number' && !Number.isNaN(options.maxAge)) ? options.maxAge : 65; if (minAge > maxAge) [minAge, maxAge] = [maxAge, minAge]; const minYear = currentYear - maxAge; const maxYear = currentYear - minAge; const year = randomInt(minYear, maxYear, rng); const month = randomInt(1, 12, rng).toString().padStart(2, '0'); const day = randomInt(1, 28, rng).toString().padStart(2, '0'); const birthNum = randomInt(100, 999, rng).toString(); const datePart = year.toString().slice(2) + month + day; const base = datePart + birthNum; const controlDigit = calculateLuhn(base); return `${year.toString().slice(2)}${month}${day}-${birthNum}${controlDigit}`; };
+const generateBankgiro = (rng) => {
+    let base = '';
+    for (let i = 0; i < 7; i++) {
+        base += randomInt(0, 9, rng);
+    }
+    const checkDigit = calculateLuhn(base);
+    return `${base.slice(0, 3)}-${base.slice(3)}${checkDigit}`;
+};
+
+const generatePlusgiro = (rng) => {
+    let base = '';
+    const length = randomInt(6, 8, rng);
+    for (let i = 0; i < length; i++) {
+        base += randomInt(0, 9, rng);
+    }
+    const checkDigit = calculateMod10Weighted(base, [7, 3, 1]); // Plusgiro weights
+    
+    if (base.length === 6) {
+        return `${base.slice(0, 2)} ${base.slice(2, 4)} ${base.slice(4)}-${checkDigit}`;
+    } else if (base.length === 7) {
+        return `${base.slice(0, 3)} ${base.slice(3, 5)} ${base.slice(5)}-${checkDigit}`;
+    } else if (base.length === 8) {
+        return `${base.slice(0, 4)} ${base.slice(4, 6)} ${base.slice(6)}-${checkDigit}`;
+    }
+    return `${base}-${checkDigit}`;
+};
+
+const generatePersonnummer = (rng, options = {}) => {
+    if (options.invalidRate > 0 && rng() * 100 < options.invalidRate) {
+        const pnr = generatePersonnummer(rng, { ...options, invalidRate: 0 }).split('-'); // Generate a valid one first, then invalidate
+        const base = pnr[0] + pnr[1].slice(0, -1);
+        const correctDigit = calculateLuhn(base);
+        const wrongDigit = (correctDigit + randomInt(1, 9, rng)) % 10;
+        return `${pnr[0]}-${pnr[1].slice(0, -1)}${wrongDigit} (INVA)`;
+    }
+
+    const currentYear = new Date().getFullYear();
+    let minAge = (typeof options.minAge === 'number' && !Number.isNaN(options.minAge)) ? options.minAge : 18;
+    let maxAge = (typeof options.maxAge === 'number' && !Number.isNaN(options.maxAge)) ? options.maxAge : 65;
+    if (minAge > maxAge) [minAge, maxAge] = [maxAge, minAge];
+    const minYear = currentYear - maxAge;
+    const maxYear = currentYear - minAge;
+
+    const year = randomInt(minYear, maxYear, rng);
+    const month = randomInt(1, 12, rng).toString().padStart(2, '0');
+    const day = randomInt(1, 28, rng).toString().padStart(2, '0');
+
+    let birthNumCandidates = [];
+    for (let i = 0; i <= 999; i++) {
+        const numStr = String(i).padStart(3, '0');
+        const thirdToLastDigit = parseInt(numStr.charAt(2)); // The last digit of birthNum part, which determines gender parity
+
+        if (options.gender === 'female' && thirdToLastDigit % 2 === 0) {
+            birthNumCandidates.push(numStr);
+        } else if (options.gender === 'male' && thirdToLastDigit % 2 !== 0) {
+            birthNumCandidates.push(numStr);
+        } else if (!options.gender) { // No gender specified, allow any
+            birthNumCandidates.push(numStr);
+        }
+    }
+    
+    // Fallback if no specific gender candidates are found (shouldn't happen for 0-999 range)
+    if (birthNumCandidates.length === 0) {
+        for (let i = 0; i <= 999; i++) birthNumCandidates.push(String(i).padStart(3, '0'));
+    }
+
+    const birthNum = random(birthNumCandidates, rng);
+    const datePart = year.toString().slice(2) + month + day;
+    const base = datePart + birthNum;
+    const controlDigit = calculateLuhn(base);
+
+    return `${year.toString().slice(2)}${month}${day}-${birthNum}${controlDigit}`;
+};
 const maskPersonnummer = (pnr, seed) => { const cleanPnr = pnr.replace(/[-+]/g, ''); if (!isValidLuhn(cleanPnr)) return pnr; const maskSeed = cleanPnr + (seed || 'luhn.se-mask-salt'); const rng = getRandomGenerator(maskSeed); const year = randomInt(1950, 2003, rng); const month = randomInt(1, 12, rng).toString().padStart(2, '0'); const day = randomInt(1, 28, rng).toString().padStart(2, '0'); const birthNum = randomInt(100, 999, rng).toString(); const datePart = year.toString().slice(2) + month + day; const base = datePart + birthNum; const controlDigit = calculateLuhn(base); return `${datePart.slice(0, 6)}-${birthNum}${controlDigit}`; };
 const generateCreditCard = (type, rng) => { let base; if (type === 'Visa') { base = '424242'; while (base.length < 15) base += randomInt(0, 9, rng); } else if (type === 'Mastercard') { base = '555555'; while (base.length < 15) base += randomInt(0, 9, rng); } else { base = '424242' + randomInt(100000000, 999999999, rng); } return base + calculateLuhn(base); };
 const generateIMEI = (rng) => { const tacs = ["35", "86", "99", "01"]; let base = random(tacs, rng); while (base.length < 14) base += randomInt(0, 9, rng); return base + calculateLuhn(base); };
@@ -246,14 +411,193 @@ const generateOrgNummer = (rng) => { const prefix = "55"; const third = randomIn
 const firstNames = ["Erik", "Lars", "Karl", "Anders", "Johan", "Per", "Nils", "Mikael", "Jan", "Hans", "Maria", "Anna", "Margareta", "Elisabeth", "Eva", "Birgitta", "Kristina", "Karin", "William", "Liam", "Noah", "Hugo", "Lucas", "Oliver", "Alice", "Maja", "Elsa", "Astrid", "Wilma", "Freja"];
 const lastNames = ["Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Larsson", "Olsson", "Persson", "Svensson", "Gustafsson"];
 const streets = ["Storgatan", "Drottninggatan", "Kungsgatan", "Sveavägen", "Vasagatan", "Linnégatan", "Odengatan", "Ringvägen", "Skolgatan", "Kyrkogatan"];
-const cityRanges = [ { city: "Stockholm", min: 111, max: 199 }, { city: "Göteborg", min: 411, max: 418 }, { city: "Malmö", min: 211, max: 227 }, { city: "Uppsala", min: 752, max: 757 } ];
-const generateAddress = (rng) => { const area = random(cityRanges, rng); const prefix = randomInt(area.min, area.max, rng); const suffix = randomInt(10, 99, rng); return { gata: `${random(streets, rng)} ${randomInt(1, 150, rng)}`, postnummer: `${prefix} ${suffix}`, ort: area.city }; };
+
+const postalCodeData = [
+    { postnummer: "111 22", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "111 29", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "113 56", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "115 21", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "118 60", ort: "Stockholm", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "121 31", ort: "Bromma", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "122 32", ort: "Enskede", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "126 30", ort: "Hägersten", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "127 40", ort: "Skärholmen", kommun: "Stockholm", län: "Stockholms län" },
+    { postnummer: "131 40", ort: "Nacka", kommun: "Nacka", län: "Stockholms län" },
+    { postnummer: "141 71", ort: "Huddinge", kommun: "Huddinge", län: "Stockholms län" },
+    { postnummer: "151 50", ort: "Södertälje", kommun: "Södertälje", län: "Stockholms län" },
+    { postnummer: "181 32", ort: "Lidingö", kommun: "Lidingö", län: "Stockholms län" },
+    { postnummer: "191 43", ort: "Sollentuna", kommun: "Sollentuna", län: "Stockholms län" },
+
+    { postnummer: "201 20", ort: "Malmö", kommun: "Malmö", län: "Skåne län" },
+    { postnummer: "211 35", ort: "Malmö", kommun: "Malmö", län: "Skåne län" },
+    { postnummer: "212 18", ort: "Malmö", kommun: "Malmö", län: "Skåne län" },
+    { postnummer: "214 32", ort: "Malmö", kommun: "Malmö", län: "Skåne län" },
+    { postnummer: "217 46", ort: "Malmö", kommun: "Malmö", län: "Skåne län" },
+    { postnummer: "221 00", ort: "Lund", kommun: "Lund", län: "Skåne län" },
+    { postnummer: "252 21", ort: "Helsingborg", kommun: "Helsingborg", län: "Skåne län" },
+    { postnummer: "291 33", ort: "Kristianstad", kommun: "Kristianstad", län: "Skåne län" },
+
+    { postnummer: "411 01", ort: "Göteborg", kommun: "Göteborg", län: "Västra Götalands län" },
+    { postnummer: "413 04", ort: "Göteborg", kommun: "Göteborg", län: "Västra Götalands län" },
+    { postnummer: "415 03", ort: "Göteborg", kommun: "Göteborg", län: "Västra Götalands län" },
+    { postnummer: "417 55", ort: "Göteborg", kommun: "Göteborg", län: "Västra Götalands län" },
+    { postnummer: "421 30", ort: "Västra Frölunda", kommun: "Göteborg", län: "Västra Götalands län" },
+    { postnummer: "431 37", ort: "Mölndal", kommun: "Mölndal", län: "Västra Götalands län" },
+    { postnummer: "451 50", ort: "Uddevalla", kommun: "Uddevalla", län: "Västra Götalands län" },
+    { postnummer: "461 30", ort: "Trollhättan", kommun: "Trollhättan", län: "Västra Götalands län" },
+    
+    { postnummer: "753 10", ort: "Uppsala", kommun: "Uppsala", län: "Uppsala län" },
+    { postnummer: "754 40", ort: "Uppsala", kommun: "Uppsala", län: "Uppsala län" },
+    { postnummer: "756 51", ort: "Uppsala", kommun: "Uppsala", län: "Uppsala län" },
+
+    { postnummer: "903 26", ort: "Umeå", kommun: "Umeå", län: "Västerbottens län" },
+    { postnummer: "981 32", ort: "Kiruna", kommun: "Kiruna", län: "Norrbottens län" },
+    { postnummer: "802 55", ort: "Gävle", kommun: "Gävle", län: "Gävleborgs län" },
+    { postnummer: "632 20", ort: "Eskilstuna", kommun: "Eskilstuna", län: "Södermanlands län" },
+    { postnummer: "582 24", ort: "Linköping", kommun: "Linköping", län: "Östergötlands län" },
+    { postnummer: "352 36", ort: "Växjö", kommun: "Växjö", län: "Kronobergs län" },
+    { postnummer: "702 10", ort: "Örebro", kommun: "Örebro", län: "Örebro län" },
+    { postnummer: "654 60", ort: "Karlstad", kommun: "Karlstad", län: "Värmlands län" },
+    { postnummer: "722 10", ort: "Västerås", kommun: "Västerås", län: "Västmanlands län" },
+    { postnummer: "371 34", ort: "Karlskrona", kommun: "Karlskrona", län: "Blekinge län" },
+    { postnummer: "852 36", ort: "Sundsvall", kommun: "Sundsvall", län: "Västernorrlands län" },
+];
+
+const generateAddress = (rng, options = {}) => {
+    let filteredData = postalCodeData;
+
+    if (options.city) {
+        filteredData = filteredData.filter(item => item.ort.toLowerCase() === options.city.toLowerCase());
+    }
+    // TODO: Add filtering for 'kommun' or 'lan' if needed in the future
+
+    const selectedLocation = random(filteredData.length > 0 ? filteredData : postalCodeData, rng); // Fallback to full list
+
+    return { 
+        gata: `${random(streets, rng)} ${randomInt(1, 150, rng)}`, 
+        postnummer: selectedLocation.postnummer, 
+        ort: selectedLocation.ort,
+        kommun: selectedLocation.kommun,
+        lan: selectedLocation.län
+    };
+};
+
+const bankData = [ { name: "Swedbank", clearing: [7000, 7999] }, { name: "Handelsbanken", clearing: [6000, 6999] }, { name: "SEB", clearing: [5000, 5999] }, { name: "Nordea", clearing: [1100, 1199] }, ];
+const mod97 = (str) => {
+    let checksum = "";
+    for (let i = 0; i < str.length; i++) {
+        checksum = (checksum + str[i]) % 97;
+    }
+    return checksum;
+};
+const generateIban = (rng) => { const bank = random(bankData, rng); const clearing = randomInt(bank.clearing[0], bank.clearing[1], rng); const account = ('' + randomInt(1, 999999999, rng)).padStart(10, '0'); const bban = `${clearing}0000${account}`.slice(0, 20); const numericIban = bban.split('').map(c => c.charCodeAt(0) - 55).join('') + '281400'; let checksum = 98 - mod97(numericIban); return `SE${String(checksum).padStart(2, '0')}${clearing}${account}`.slice(0, 24); };
 
 const createPerson = (rng, options) => { const fn = random(firstNames, rng); const ln = random(lastNames, rng); const cleanName = (str) => str.toLowerCase().replace(/å/g, 'a').replace(/ä/g, 'a').replace(/ö/g, 'o'); return { id: randomInt(1, 999999, rng), namn: `${fn} ${ln}`, personnummer: generatePersonnummer(rng, options), ...generateAddress(rng), kontakt: { mobil: `070-17406${randomInt(5, 99, rng).toString().padStart(2, '0')}`, email: `${cleanName(fn)}.${cleanName(ln)}@luhn.se` } }; };
-const createCompany = (rng) => { const name = `${random(["Nordic", "Svea", "Tech"])} ${random(["AB", "Consulting AB"])}`; return { id: randomInt(1, 999999, rng), foretag: name, orgnummer: generateOrgNummer(rng), ...generateAddress(rng) }; };
-const createVehicle = (rng) => { return { id: randomInt(1, 999999, rng), regnummer: "ABC 123", typ: "Personbil", modell: "Volvo V60" }; };
+
+const companyNamePrefixes = ["Nordic", "Svenska", "Global", "Stockholm", "Göteborgs", "Malmö", "Digitala", "Kreativa", "Svea", "Modern"];
+const companyNameKeywords = ["Konsult", "Teknik", "Solutions", "Bygg", "Finans", "Media", "Design", "IT", "Partner", "Gruppen", "Invest"];
+const companyLegalForms = ["Aktiebolag", "Handelsbolag", "Kommanditbolag", "Enskild Firma"];
+
+const createCompany = (rng) => {
+    const legalForm = random(companyLegalForms, rng);
+    let name = "";
+
+    if (legalForm === "Enskild Firma") {
+        const fn = random(firstNames, rng);
+        const ln = random(lastNames, rng);
+        name = `${ln}, ${fn}`;
+    } else {
+        name = `${random(companyNamePrefixes, rng)} ${random(companyNameKeywords, rng)}`;
+        if (legalForm === "Aktiebolag") {
+            name += " AB";
+        } else if (legalForm === "Handelsbolag") {
+            name += " HB";
+        } else if (legalForm === "Kommanditbolag") {
+            name += " KB";
+        }
+    }
+
+    return { 
+        id: randomInt(1, 999999, rng), 
+        foretag: name, 
+        bolagsform: legalForm,
+        orgnummer: generateOrgNummer(rng), 
+        ...generateAddress(rng) 
+    }; 
+};
+
+const vehicleData = [
+    // Bilar
+    { typ: "Personbil", modell: "Volvo V60" },
+    { typ: "Personbil", modell: "Volkswagen Golf" },
+    { typ: "Personbil", modell: "Tesla Model Y" },
+    { typ: "Personbil", modell: "Kia Niro" },
+    { typ: "Personbil", modell: "Toyota RAV4" },
+    { typ: "Personbil", modell: "BMW 3-serie" },
+    { typ: "Personbil", modell: "Audi A4" },
+    { typ: "Personbil", modell: "Skoda Octavia" },
+    { typ: "Personbil", modell: "Porsche 911" },
+    { typ: "Personbil", modell: "Polestar 2" },
+    // Lastbilar
+    { typ: "Lastbil", modell: "Scania R-serie" },
+    { typ: "Lastbil", modell: "Volvo FH16" },
+    { typ: "Lastbil", modell: "Mercedes-Benz Actros" },
+    { typ: "Lastbil", modell: "MAN TGX" },
+    // MC
+    { typ: "MC", modell: "Harley-Davidson Sportster" },
+    { typ: "MC", modell: "Honda CBR" },
+    { typ: "MC", modell: "BMW R1250GS" },
+    { typ: "MC", modell: "Yamaha MT-07" },
+    // Släpvagnar
+    { typ: "Släpvagn", modell: "Brenderup 1205S" },
+    { typ: "Släpvagn", modell: "Fogelsta F1425" },
+    { typ: "Släpvagn", modell: "Respo 750M" },
+    { typ: "Släpvagn", modell: "Tiki C-265" },
+];
+const generateRegnummer = (rng) => {
+    const letters = 'ABCDEFGHJKLMNPRSTUWXYZ'; // Bokstäver som används i regnummer
+    const lastChars = '0123456789ABCDEFGHJKLMNPRSTUWXYZ';
+    let reg = '';
+    for (let i = 0; i < 3; i++) {
+        reg += letters.charAt(Math.floor(rng() * letters.length));
+    }
+    reg += ' ';
+    reg += randomInt(10, 99, rng);
+    reg += lastChars.charAt(Math.floor(rng() * lastChars.length));
+    return reg;
+};
+const createVehicle = (rng) => { 
+    const vehicleIndex = Math.floor(rng() * vehicleData.length);
+    console.log("DEBUG: createVehicle - Picking vehicle at index:", vehicleIndex);
+    const vehicle = vehicleData[vehicleIndex];
+    return { 
+        id: randomInt(1, 999999, rng), 
+        regnummer: generateRegnummer(rng), 
+        typ: vehicle.typ, 
+        modell: vehicle.modell 
+    }; 
+};
+
 const createCard = (rng) => { const brand = random(['Visa', 'Mastercard'], rng); return { id: randomInt(1, 999999, rng), typ: "Kreditkort", brand: brand, nummer: generateCreditCard(brand, rng), cvv: randomInt(100, 999, rng).toString(), exp: `${randomInt(1, 12, rng).toString().padStart(2,'0')}/${randomInt(25, 30, rng)}` }; };
 const createDevice = (rng) => { return { id: randomInt(1, 999999, rng), typ: "Mobiltelefon", imei: generateIMEI(rng), modell: "iPhone 15" }; };
+const createFinance = (rng) => { const bank = random(bankData, rng); return { id: randomInt(1, 999999, rng), bank: bank.name, iban: generateIban(rng), typ: "Lönekonto" }; };
+const createIdentity = (rng, options) => { const person = createPerson(rng, options); delete person.id; return { id: randomInt(1, 999999, rng), person, kort: createCard(rng), enhet: createDevice(rng), fordon: createVehicle(rng), }; };
+const createBankIdMock = (rng) => {
+    const orderRef = crypto.randomUUID();
+    const autoStartToken = crypto.randomBytes(32).toString('hex');
+    const qrCodeSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="black"/></svg>`;
+    const qrCode = `data:image/svg+xml;base64,${Buffer.from(qrCodeSvg).toString('base64')}`;
+
+    return {
+        orderRef: orderRef,
+        autoStartToken: autoStartToken,
+        qrCode: qrCode,
+        status: 'pending',
+        message: 'Starta din BankID-app.',
+        generatedAt: new Date().toISOString()
+    };
+};
+
 
 const handleResponse = async (req, res, dataFunction, options = {}) => {
     let rng = Math.random;
@@ -272,12 +616,25 @@ const handleResponse = async (req, res, dataFunction, options = {}) => {
 
     const finalData = Array.isArray(data) ? data : [data];
     finalData.forEach(item => item.generatedAt = new Date().toISOString());
-    if (!Array.isArray(data)) data = finalData[0];
+    if (!Array.isArray(data)) data = finalData[0]; // This line ensures that for single item requests, data is still an object not an array
+
     if (req.query.format === 'xml') { res.header('Content-Type', 'application/xml'); return res.send(toXML(data)); }
+    if (req.query.format === 'csv') { res.header('Content-Type', 'text/csv'); return res.send(toCSV(finalData)); }
+    if (req.query.format === 'sql') {
+        const resourceName = req.path.split('/').filter(Boolean).pop(); // Extract 'person', 'company' etc.
+        res.header('Content-Type', 'application/sql');
+        return res.send(toSQLInsert(finalData, resourceName));
+    }
     res.json(data);
 };
 
-const getScenarioOptions = (req) => ({ invalidRate: parseInt(req.query.invalidRate) || 0, city: req.query.city, minAge: parseInt(req.query.minAge), maxAge: parseInt(req.query.maxAge), });
+const getScenarioOptions = (req) => ({ 
+    invalidRate: parseInt(req.query.invalidRate) || 0, 
+    city: req.query.city, 
+    minAge: parseInt(req.query.minAge), 
+    maxAge: parseInt(req.query.maxAge),
+    gender: req.query.gender // Add gender parameter
+});
 
 // --- PAGE ROUTES ---
 // Serve clean URLs for static pages
@@ -287,6 +644,9 @@ app.get('/terms', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ter
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
 app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+app.get('/personnummer-generator', (req, res) => res.sendFile(path.join(__dirname, 'public', 'personnummer-generator.html')));
+app.get('/organisationsnummer-generator', (req, res) => res.sendFile(path.join(__dirname, 'public', 'organisationsnummer-generator.html')));
+
 
 // --- API DATA ROUTES ---
 app.get('/api/person', (req, res) => handleResponse(req, res, createPerson, getScenarioOptions(req)));
@@ -296,11 +656,49 @@ app.get('/api/company/:id', (req, res) => handleResponse(req, res, createCompany
 app.get('/api/vehicle', (req, res) => handleResponse(req, res, createVehicle));
 app.get('/api/creditcard', (req, res) => handleResponse(req, res, createCard));
 app.get('/api/imei', (req, res) => handleResponse(req, res, createDevice));
+app.get('/api/finance', (req, res) => handleResponse(req, res, createFinance));
+app.get('/api/identity', (req, res) => handleResponse(req, res, createIdentity));
+app.get('/api/bankid', (req, res) => handleResponse(req, res, createBankIdMock));
+app.get('/api/bankgiro', (req, res) => handleResponse(req, res, (rng) => ({ bankgiro: generateBankgiro(rng) })));
+app.get('/api/plusgiro', (req, res) => handleResponse(req, res, (rng) => ({ plusgiro: generatePlusgiro(rng) })));
 
 app.post('/api/mask', (req, res) => {
     const data = req.body.data || [];
     if (!Array.isArray(data)) return res.status(400).json({ error: true, message: "Input måste vara en array i 'data'." });
     res.json({ success: true, maskedData: data.map(item => ({ masked: maskPersonnummer(item, req.query.seed), isValid: isValidLuhn(maskPersonnummer(item, req.query.seed)) })) });
+});
+
+const detectNumberType = (str) => {
+    const cleanStr = str.replace(/[-+\s]/g, '');
+    if (cleanStr.length === 10 || cleanStr.length === 12) {
+        if (cleanStr.length === 10 && ['16', '55', '7', '8', '9'].some(prefix => cleanStr.startsWith(prefix))) {
+            return "Organisationsnummer";
+        }
+        return "Personnummer";
+    }
+    if (cleanStr.length >= 13 && cleanStr.length <= 19) {
+        return "Kreditkort";
+    }
+    return "Okänd";
+};
+
+app.post('/api/validate/bulk', (req, res) => {
+    const { numbers } = req.body;
+    if (!Array.isArray(numbers)) {
+        return res.status(400).json({ error: true, message: "Input måste vara en JSON array med namnet 'numbers'." });
+    }
+
+    const results = numbers.map(num => {
+        const type = detectNumberType(num);
+        const isValid = isValidLuhn(num);
+        return {
+            number: num,
+            type: type,
+            isValid: isValid
+        };
+    });
+
+    res.json(results);
 });
 
 app.get('/api/validate/:input', (req, res) => {

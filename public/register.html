@@ -10,8 +10,18 @@
     <header>
         <div class="container nav-content">
             <a href="/" class="logo">luhn<span>.se</span></a>
-            <div class="nav-links">
-                <a href="/login.html">Logga In</a>
+            <div id="nav-links-container" class="nav-links">
+                <div class="nav-item">
+                    <a href="#">Generatorer</a>
+                    <div class="dropdown-menu">
+                        <a href="/personnummer-generator.html">Personnummer</a>
+                        <a href="/organisationsnummer-generator.html">Organisationsnummer</a>
+                    </div>
+                </div>
+                <a href="/docs.html">Dokumentation</a>
+                <a href="mailto:hej@luhn.se">Kontakt</a>
+                <a href="/login.html" style="margin-left: 30px;">Logga In</a>
+                <a href="/register.html"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
             </div>
         </div>
     </header>
@@ -42,5 +52,24 @@
 
     <script src="/pocketbase.umd.js"></script>
     <script src="/auth.js"></script>
+    <script src="/nav.js"></script>
+    <script>
+        // Docs-specific JS
+        function copyCode(el) {
+            navigator.clipboard.writeText(el.innerText).then(() => {
+                const toast = document.getElementById('toast');
+                toast.innerText = "Kopierat! 📋";
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.pb) {
+                // Ensure updateNavLinks is called after pb is initialized.
+                // It will be called by nav.js directly.
+            }
+        });
+    </script>
 </body>
 </html>
