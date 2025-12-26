@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentation | Luhn.se</title>
+    <link rel="stylesheet" href="style.css">
+
+    <meta name="description"
+        content="Dokumentation för Luhn.se API. Endpoints för Person, Företag, BankID, Fordon, Kreditkort och IMEI.">
+    <meta property="og:title" content="API Dokumentation | Luhn.se">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇸🇪</text></svg>">
+</head>
+
+<body>
+    <header>
+        <div class="container nav-content">
+            <a href="/" class="logo">luhn<span>.se</span></a>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <a href="/" style="color: #8b949e; text-decoration: none; font-size: 0.9rem;">← Tillbaka till
+                    Generatorn</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero" style="padding-bottom: 20px;">
+            <h1>API Dokumentation</h1>
+            <p class="subtitle">Allt du behöver veta för att integrera svensk testdata i din applikation.</p>
+        </section>
+
+        <section class="docs-section" style="border-top: none; padding-top: 0; margin-bottom: 0;">
+            <h3 style="margin-bottom: 30px;">Resurser & Datasets</h3>
+
+            <div class="docs-grid">
+                <div class="docs-card">
+                    <h3>Globala Parametrar</h3>
+                    <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 20px;">Fungerar på nästan alla
+                        GET-endpoints.</p>
+                    <table class="param-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Beskrivning</th>
+                                <th>Exempel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>amount</td>
+                                <td>Antal objekt (1-100).</td>
+                                <td>?amount=5</td>
+                            </tr>
+                            <tr>
+                                <td>seed</td>
+                                <td>Deterministisk data.</td>
+                                <td>?seed=test1</td>
+                            </tr>
+                            <tr>
+                                <td>delay</td>
+                                <td>Simulera nätverkslagg (ms).</td>
+                                <td>?delay=2000</td>
+                            </tr>
+                            <tr>
+                                <td>status</td>
+                                <td>Simulera HTTP-felkod.</td>
+                                <td>?status=500</td>
+                            </tr>
+                            <tr>
+                                <td>format</td>
+                                <td>Svarsformat (json/xml).</td>
+                                <td>?format=xml</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Scenario Builder</h3>
+                    <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 20px;">För <code>/person</code> och
+                        <code>/identity</code>.</p>
+                    <table class="param-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Beskrivning</th>
+                                <th>Exempel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>minAge</td>
+                                <td>Minsta ålder (år).</td>
+                                <td>?minAge=18</td>
+                            </tr>
+                            <tr>
+                                <td>maxAge</td>
+                                <td>Högsta ålder (år).</td>
+                                <td>?maxAge=65</td>
+                            </tr>
+                            <tr>
+                                <td>city</td>
+                                <td>Filtrera på stad.</td>
+                                <td>?city=Malmö</td>
+                            </tr>
+                            <tr>
+                                <td>invalidRate</td>
+                                <td>% chans för ogiltigt PNR.</td>
+                                <td>?invalidRate=10</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <div class="callout" style="margin-top: 20px;">
+    <strong>Fair Usage Policy för Bulk-export:</strong><br>
+    För att säkerställa prestanda för alla kunder har vi en separat gräns för stora data-anrop (över 100 rader).<br>
+    Du kan göra upp till <strong>10 st Bulk-anrop per timme</strong>.
+    För normala API-anrop (upp till 100 rader) gäller din vanliga rate limit (t.ex. 2 000/15min).
+</div>
+
+        <section class="docs-section">
+            <h3 style="margin-bottom: 30px;">Core Generators</h3>
+            <div class="dataset-grid">
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Person</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/person</span>
+                    <p class="dataset-desc">Svenska namn, personnummer, adresser.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">?amount=5&minAge=20</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Företag</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/company</span>
+                    <p class="dataset-desc">Aktiebolag med orgnummer och momsnummer.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">?amount=10</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Ekonomi</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/finance</span>
+                    <p class="dataset-desc">Bankgiro, Plusgiro, OCR, IBAN.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">/api/finance</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Fordon</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/vehicle</span>
+                    <p class="dataset-desc">Regplåtar, fordonstyp och modell.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">/api/vehicle</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Kreditkort</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/creditcard</span>
+                    <p class="dataset-desc">Testnummer för Visa/Mastercard.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">/api/creditcard</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">IMEI</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/imei</span>
+                    <p class="dataset-desc">IMEI-nummer för mobila enheter.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">/api/imei</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="docs-section">
+            <h3 style="margin-bottom: 30px;">Komplexa Flöden</h3>
+            <div class="dataset-grid">
+                <div class="dataset-card" style="border-color: var(--accent);">
+                    <div class="dataset-header"><span class="dataset-title">Hel Identitet</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/identity</span>
+                    <p class="dataset-desc">Komplett kundresa: Person + Konto + Historik.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">?seed=kund1</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">BankID Mock</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/bankid</span>
+                    <p class="dataset-desc">Simulerat BankID-svar (complete/pending/failed).</p>
+                    <span class="query-param-example" onclick="copyCode(this)">/api/bankid</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="docs-section">
+            <h3 style="margin-bottom: 30px;">Verktyg</h3>
+            <div class="dataset-grid">
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Validator</span><span
+                            class="dataset-method">GET</span></div>
+                    <span class="dataset-url">/api/validate/:input</span>
+                    <p class="dataset-desc">Validerar PNR, OrgNr, IBAN, Kreditkort m.m.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">/api/validate/556012-5790</span>
+                </div>
+                <div class="dataset-card">
+                    <div class="dataset-header"><span class="dataset-title">Data Maskning</span><span
+                            class="dataset-method" style="background: #e36049;">POST</span></div>
+                    <span class="dataset-url">/api/mask</span>
+                    <p class="dataset-desc">Anonymisera ID:n deterministiskt.</p>
+                    <span class="query-param-example" onclick="copyCode(this)">POST body: ["19900101-1234"]</span>
+                </div>
+            </div>
+        </section>
+
+        <section style="margin-top: 40px; margin-bottom: 60px;">
+            <h2 class="docs-title" style="font-size: 1.5rem;">💻 Integrations-exempel</h2>
+            <div class="code-window">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('js')">JavaScript</div>
+                    <div class="tab" onclick="switchTab('py')">Python</div>
+                    <div class="tab" onclick="switchTab('cs')">C# (.NET)</div>
+                </div>
+                <div id="js" class="tab-content active">
+                    <div class="code-block" onclick="copyCode(this)">fetch('https://luhn.se/api/identity').then(res =>
+                        res.json()).then(console.log);</div>
+                </div>
+                <div id="py" class="tab-content">
+                    <div class="code-block" onclick="copyCode(this)">import requests<br>res =
+                        requests.get('https://luhn.se/api/identity')<br>print(res.json())</div>
+                </div>
+                <div id="cs" class="tab-content">
+                    <div class="code-block" onclick="copyCode(this)">using var client = new HttpClient();<br>var json =
+                        await client.GetStringAsync("https://luhn.se/api/identity");</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="article-section" style="margin-bottom: 60px; text-align: center;">
+            <div class="article-content">
+                <h2>Vill du förstå matematiken?</h2>
+                <p style="color:#8b949e; margin-bottom: 20px;">
+                    Vi har skrivit en djupgående guide om hur Luhn-algoritmen (Modulus 10) fungerar steg för steg.
+                </p>
+                <a href="/luhn-algoritmen"
+                    style="color: var(--accent); font-weight: 600; text-decoration: none; font-size: 1.1rem;">
+                    Läs guiden: “Så fungerar Luhn-algoritmen” →
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div>
+                    <p>&copy; 2025 Luhn.se</p>
+                    <p style="font-size: 0.7rem; color: #444;">Alla kreditkortsnummer är fiktiva testnummer (Test BINs).
+                    </p>
+                </div>
+                <div class="footer-links">
+                    <a href="/docs">API Docs</a>
+                    <a href="/terms">Villkor</a> <a href="mailto:hej@luhn.se">Support</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <div id="toast" class="toast">Kopierat! 📋</div>
+
+    <script>
+        function copyCode(el) {
+            navigator.clipboard.writeText(el.innerText).then(() => {
+                const toast = document.getElementById('toast');
+                toast.innerText = "Kopierat! 📋";
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            });
+        }
+        function switchTab(lang) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(lang).classList.add('active');
+            const buttons = document.querySelectorAll('.tab');
+            if (lang === 'js') buttons[0].classList.add('active');
+            if (lang === 'py') buttons[1].classList.add('active');
+            if (lang === 'cs') buttons[2].classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

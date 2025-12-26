@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luhn-algoritmen – så fungerar kontrollsiffror | Luhn.se</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="/_vercel/insights/script.js"></script>
+    
+    <meta name="description" content="Lär dig hur Luhn-algoritmen (Modulus 10) fungerar. Steg-för-steg guide för beräkning av kontrollsiffror i personnummer, kreditkort och IMEI.">
+    <meta property="og:title" content="Så fungerar Luhn-algoritmen | Luhn.se">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇸🇪</text></svg>">
+</head>
+<body>
+    <header>
+        <div class="container nav-content">
+            <a href="/" class="logo">luhn<span>.se</span></a>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <a href="/docs" style="color: #8b949e; text-decoration: none; font-size: 0.9rem;">← Tillbaka till Docs</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero" style="padding-bottom: 20px;">
+            <h1>Så fungerar Luhn-algoritmen</h1>
+            <p class="subtitle">En djupdykning i matematiken bakom personnummer och kreditkort.</p>
+        </section>
+
+        <section class="article-section" style="margin-top: 0;">
+            <div class="article-content">
+                <h2>Vad är Luhn-algoritmen?</h2>
+                <p>
+                    Luhn-algoritmen (även känd som "Modulus 10") utvecklades av Hans Peter Luhn på IBM år 1954. Det är en enkel kontrollsumma-formel som används för att validera en mängd olika identifikationsnummer, såsom kreditkortsnummer, IMEI-nummer och – viktigast för oss i Sverige – <strong>Personnummer</strong> och <strong>Organisationsnummer</strong>.
+                </p>
+
+                <div class="callout">
+                    <strong>Viktigt att veta:</strong> Luhn-algoritmen är inte kryptering och den är inte till för att stoppa illasinnade attacker. Dess syfte är att skydda mot oavsiktliga fel, som att kasta om två siffror eller skriva fel siffra.
+                </div>
+
+                <h3>Matematiken steg för steg</h3>
+                <p>
+                    Algoritmen fungerar genom att beräkna en "kontrollsiffra" (den sista siffran i numret). Om beräkningen inte stämmer överens med den sista siffran, är numret ogiltigt.
+                </p>
+                <p>Låt oss validera personnumret: <strong>811218-9876</strong>.</p>
+
+                <table class="math-table">
+                    <thead>
+                        <tr>
+                            <th>Steg</th>
+                            <th>Beräkning</th>
+                            <th>Resultat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1. Ta bort sista siffran</td>
+                            <td>Vi sparar kontrollsiffran <strong>6</strong> och räknar på resten: <code>811218987</code></td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>2. Multiplicera</td>
+                            <td>Multiplicera varannan siffra med 2, och varannan med 1 (från höger till vänster).</td>
+                            <td class="highlight">2 1 2 1 2 1 2 1 2</td>
+                        </tr>
+                        <tr>
+                            <td>3. Hantera tvåsiffriga tal</td>
+                            <td>Om en produkt blir 10 eller mer (t.ex 8*2=16), addera siffrorna (1+6=7).</td>
+                            <td><code>16 -> 7</code></td>
+                        </tr>
+                        <tr>
+                            <td>4. Summera allt</td>
+                            <td>7 + 1 + 2 + 2 + 2 + 8 + 9 + 8 + 5</td>
+                            <td class="result">Summa = 44</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Slutgiltig kontroll</h3>
+                <p>
+                    När vi har summan (44), ska vi räkna ut vad kontrollsiffran borde vara.
+                    Vi tar närmaste högre tiotal (50) och drar bort summan.
+                </p>
+                <p style="font-family: 'JetBrains Mono', monospace; background: #161b22; padding: 15px; border-radius: 6px;">
+                    50 - 44 = 6
+                </p>
+                <p>
+                    Resultatet är <strong>6</strong>. Eftersom detta matchar den sista siffran i vårt personnummer (811218-987<strong>6</strong>), är numret giltigt.
+                </p>
+
+                <h3>Varför använda Luhn.se?</h3>
+                <p style="margin-bottom: 25px;">
+                    <strong style="color: #c9d1d9;">Robust infrastruktur för dina tester.</strong><br>
+                    Att mocka data manuellt är enkelt i början, men blir snabbt en flaskhals. Luhn.se eliminerar behovet av att underhålla egna bibliotek för svenska dataformat.
+                </p>
+                <p style="margin-bottom: 25px;">
+                    <strong style="color: #c9d1d9;">Matematisk precision.</strong><br>
+                    Vi garanterar att varje personnummer, organisationsnummer och IBAN följer svensk standard (Luhn/Mod-97). Du kan lita på att datan passerar dina valideringsregler, vilket gör det enkelt att testa allt från checkout-flöden till bankintegrationer.
+                </p>
+                
+                <div style="text-align:center; margin-top: 40px;">
+                    <a href="/" class="action-btn" style="text-decoration:none; display:inline-block; padding: 12px 24px;">Testa validatorn på startsidan</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Luhn.se. Byggt för svenska utvecklare.</p>
+        </div>
+    </footer>
+</body>
+</html>

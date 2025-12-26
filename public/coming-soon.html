@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luhn.se - Initializing System...</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #e2e8f0;
+            --accent-color: #38bdf8;
+            --success-color: #22c55e;
+            --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .terminal-window {
+            width: 100%;
+            max-width: 700px;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #1e293b;
+            color: #fbbf24;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            border: 1px solid #475569;
+        }
+
+        .logs {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #94a3b8;
+        }
+
+        .log-entry {
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 10px;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        /* Animation delays */
+        .log-entry:nth-child(1) {
+            animation-delay: 0.2s;
+        }
+
+        .log-entry:nth-child(2) {
+            animation-delay: 0.8s;
+        }
+
+        .log-entry:nth-child(3) {
+            animation-delay: 1.5s;
+        }
+
+        .log-entry:nth-child(4) {
+            animation-delay: 2.2s;
+        }
+
+        .log-entry:nth-child(5) {
+            animation-delay: 2.8s;
+        }
+
+        .timestamp {
+            color: #64748b;
+            min-width: 85px;
+            /* Lite bredare för att rymma tiden snyggt */
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 15px;
+            background-color: var(--accent-color);
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+
+        .notify-section {
+            margin-top: 3rem;
+            opacity: 0;
+            animation: fadeIn 1s forwards 3.5s;
+        }
+
+        .input-group {
+            display: flex;
+            margin-top: 1rem;
+            gap: 0;
+        }
+
+        input[type="email"] {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px 16px;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            flex-grow: 1;
+            border-radius: 6px 0 0 6px;
+            outline: none;
+        }
+
+        input[type="email"]:focus {
+            border-color: var(--accent-color);
+        }
+
+        button {
+            background: var(--accent-color);
+            color: #0f172a;
+            border: none;
+            padding: 0 24px;
+            font-weight: bold;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            border-radius: 0 6px 6px 0;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .terminal-window {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .log-entry {
+                font-size: 0.85rem;
+                flex-direction: column;
+                gap: 2px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="terminal-window">
+        <div class="header">
+            <h1>luhn.se</h1>
+            <div class="status-badge">SYSTEM INITIALIZATION</div>
+        </div>
+
+        <div class="logs">
+            <div class="log-entry">
+                <span class="timestamp" id="ts-1"></span>
+                <span>Booting up Luhn core services... <span style="color:var(--success-color)">DONE</span></span>
+            </div>
+            <div class="log-entry">
+                <span class="timestamp" id="ts-2"></span>
+                <span>Generating Swedish mock datasets... <span style="color:var(--success-color)">DONE</span></span>
+            </div>
+            <div class="log-entry">
+                <span class="timestamp" id="ts-3"></span>
+                <span>Establishing secure API endpoints... <span style="color:var(--success-color)">DONE</span></span>
+            </div>
+            <div class="log-entry">
+                <span class="timestamp" id="ts-4"></span>
+                <span>Verifying algorithmic integrity... <span style="color:var(--success-color)">DONE</span></span>
+            </div>
+            <div class="log-entry">
+                <span class="timestamp" id="ts-5"></span>
+                <span>Preparing for public launch... <span class="cursor"></span></span>
+            </div>
+        </div>
+
+        <div class="notify-section">
+            <p style="color: #cbd5e1;">
+                Vi lanserar snart Sveriges bästa verktyg för testdata. <br>
+                Vill du ha tillgång till API-nycklar före alla andra?
+            </p>
+
+            <form id="subscribeForm" onsubmit="submitEmail(event)">
+                <div class="input-group">
+                    <input type="email" id="emailInput" name="email" placeholder="dev@example.com" required>
+                    <button type="submit" id="submitBtn">BE NOTIFIED</button>
+                </div>
+                <p id="formStatus" style="margin-top: 10px; font-size: 0.85rem; height: 20px;"></p>
+            </form>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const now = new Date();
+            const offsets = [-9, -7, -5, -2, 0];
+            for (let i = 0; i < 5; i++) {
+                const el = document.getElementById(`ts-${i + 1}`);
+                if (el) {
+                    const logTime = new Date(now.getTime() + (offsets[i] * 1000));
+                    el.textContent = `[${logTime.toLocaleTimeString('sv-SE')}]`;
+                }
+            }
+        });
+
+        async function submitEmail(event) {
+            event.preventDefault();
+
+            const emailInput = document.getElementById('emailInput');
+            const btn = document.getElementById('submitBtn');
+            const statusMsg = document.getElementById('formStatus');
+            const email = emailInput.value;
+
+            btn.disabled = true;
+            btn.innerText = "SENDING...";
+            btn.style.opacity = "0.7";
+            statusMsg.innerText = "";
+
+            try {
+                const response = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    btn.innerText = "SAVED";
+                    btn.style.backgroundColor = "var(--success-color)";
+                    btn.style.color = "#fff";
+                    btn.style.opacity = "1";
+
+                    statusMsg.style.color = "var(--success-color)";
+                    statusMsg.innerText = "Din adress är registrerad i databasen!";
+                    emailInput.value = "";
+                } else {
+                    throw new Error("Server error");
+                }
+
+            } catch (error) {
+                console.error(error);
+                btn.disabled = false;
+                btn.innerText = "TRY AGAIN";
+                btn.style.opacity = "1";
+                statusMsg.style.color = "#ef4444";
+                statusMsg.innerText = "Kunde inte spara. Försök igen.";
+            }
+        }
+    </script>
+
+</body>
+
+</html>
