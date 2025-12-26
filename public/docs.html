@@ -6,10 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dokumentation | Luhn.se</title>
     <link rel="stylesheet" href="style.css">
-
     <meta name="description"
         content="Dokumentation för Luhn.se API. Endpoints för Person, Företag, BankID, Fordon, Kreditkort och IMEI.">
-    <meta property="og:title" content="API Dokumentation | Luhn.se">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇸🇪</text></svg>">
 </head>
@@ -19,256 +17,122 @@
         <div class="container nav-content">
             <a href="/" class="logo">luhn<span>.se</span></a>
             <div id="nav-links-container" class="nav-links">
-                <a href="/">Generatorn</a>
-                <a href="mailto:hej@luhn.se">Kontakt</a>
-                <a href="/login.html" style="margin-left: 30px;">Logga In</a>
-                <a href="/register.html"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
+                 <a href="/">Generatorn</a>
+                 <a href="mailto:hej@luhn.se">Kontakt</a>
+                 <a href="/login" style="margin-left: 30px;">Logga In</a>
+                 <a href="/register"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
             </div>
         </div>
     </header>
 
-    <main class="container">
-        <section class="hero" style="padding-bottom: 20px;">
-            <h1>API Dokumentation</h1>
-            <p class="subtitle">Allt du behöver veta för att integrera svensk testdata i din applikation.</p>
-        </section>
+    <div class="docs-wrapper">
+        <aside class="docs-sidebar">
+            <nav id="docs-nav">
+                <ul>
+                    <li><a href="#introduction">Introduktion</a></li>
+                    <li><a href="#authentication">Autentisering</a></li>
+                    <li><a href="#rate-limits">Rate Limits</a></li>
+                    <li><a href="#global-parameters">Globala Parametrar</a></li>
+                    <li><a href="#scenario-builder">Scenario Builder</a></li>
+                    <li class="group-header">Core Generators</li>
+                    <li><a href="#person">Person</a></li>
+                    <li><a href="#company">Företag</a></li>
+                    <li><a href="#finance">Ekonomi</a></li>
+                    <li><a href="#vehicle">Fordon</a></li>
+                    <li><a href="#creditcard">Kreditkort</a></li>
+                    <li><a href="#imei">IMEI</a></li>
+                    <li class="group-header">Komplexa Flöden</li>
+                    <li><a href="#identity">Hel Identitet</a></li>
+                    <li><a href="#bankid">BankID Mock</a></li>
+                    <li class="group-header">Verktyg</li>
+                    <li><a href="#validator">Validator</a></li>
+                    <li><a href="#masking">Data Maskning</a></li>
+                </ul>
+            </nav>
+        </aside>
 
-        <section class="docs-section" style="border-top: none; padding-top: 0; margin-bottom: 0;">
-            <h3 style="margin-bottom: 30px;">Resurser & Datasets</h3>
+        <main class="docs-content">
+            <section id="introduction">
+                <h2>Introduktion</h2>
+                <p>Välkommen till dokumentationen för Luhn.se, ett API för att generera svensk test- och mockdata. API:et är designat för att vara enkelt att använda och förutsägbart.</p>
+                <p>Alla GET-endpoints returnerar data i JSON-format som standard. För de flesta endpoints kan du även få svar i XML-format genom att lägga till <code>?format=xml</code> i din anrops-URL.</p>
+            </section>
 
-            <div class="docs-grid">
-                <div class="docs-card">
-                    <h3>Globala Parametrar</h3>
-                    <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 20px;">Fungerar på nästan alla
-                        GET-endpoints.</p>
-                    <table class="param-table">
-                        <thead>
-                            <tr>
-                                <th>Parameter</th>
-                                <th>Beskrivning</th>
-                                <th>Exempel</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>amount</td>
-                                <td>Antal objekt (1-100).</td>
-                                <td>?amount=5</td>
-                            </tr>
-                            <tr>
-                                <td>seed</td>
-                                <td>Deterministisk data.</td>
-                                <td>?seed=test1</td>
-                            </tr>
-                            <tr>
-                                <td>delay</td>
-                                <td>Simulera nätverkslagg (ms).</td>
-                                <td>?delay=2000</td>
-                            </tr>
-                            <tr>
-                                <td>status</td>
-                                <td>Simulera HTTP-felkod.</td>
-                                <td>?status=500</td>
-                            </tr>
-                            <tr>
-                                <td>format</td>
-                                <td>Svarsformat (json/xml).</td>
-                                <td>?format=xml</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <section id="authentication">
+                <h2>Autentisering</h2>
+                <p>För att få tillgång till högre rate limits (Pro- och Team-planer) behöver du autentisera dig med en API-nyckel. Du hittar din nyckel på din <a href="/profile">profilsida</a> efter att du har startat en prenumeration.</p>
+                <p>Skicka med din API-nyckel i en `x-api-key` header i dina anrop:</p>
+                <div class="code-block">curl "https://luhn.se/api/person" -H "x-api-key: YOUR_API_KEY"</div>
+                 <p>Om du inte skickar med en nyckel kommer du att använda den generösa "Hobby"-planen, där din IP-adress används för rate limiting.</p>
+            </section>
 
-                <div class="docs-card">
-                    <h3>Scenario Builder</h3>
-                    <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 20px;">För <code>/person</code> och
-                        <code>/identity</code>.</p>
-                    <table class="param-table">
-                        <thead>
-                            <tr>
-                                <th>Parameter</th>
-                                <th>Beskrivning</th>
-                                <th>Exempel</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>minAge</td>
-                                <td>Minsta ålder (år).</td>
-                                <td>?minAge=18</td>
-                            </tr>
-                            <tr>
-                                <td>maxAge</td>
-                                <td>Högsta ålder (år).</td>
-                                <td>?maxAge=65</td>
-                            </tr>
-                            <tr>
-                                <td>city</td>
-                                <td>Filtrera på stad.</td>
-                                <td>?city=Malmö</td>
-                            </tr>
-                            <tr>
-                                <td>invalidRate</td>
-                                <td>% chans för ogiltigt PNR.</td>
-                                <td>?invalidRate=10</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
+            <section id="rate-limits">
+                <h2>Rate Limits</h2>
+                <p>API:et använder ett dubbelt rate limit-system för att säkerställa hög tillgänglighet för alla.</p>
+                <ul class="value-list">
+                    <li><b>Standard Limit:</b> Gäller för alla anrop. Begränsar antalet anrop du kan göra per 15-minutersfönster (se <a href="/#pricing">prislistan</a> för detaljer).</li>
+                    <li><b>Bulk Limit:</b> En separat, striktare gräns för anrop som begär mer än 100 rader data (t.ex. <code>?amount=101</code>). Du kan göra upp till 10 sådana "bulk-anrop" per timme.</li>
+                </ul>
+            </section>
 
-        <div class="callout" style="margin-top: 20px;">
-    <strong>Fair Usage Policy för Bulk-export:</strong><br>
-    För att säkerställa prestanda för alla kunder har vi en separat gräns för stora data-anrop (över 100 rader).<br>
-    Du kan göra upp till <strong>10 st Bulk-anrop per timme</strong>.
-    För normala API-anrop (upp till 100 rader) gäller din vanliga rate limit (t.ex. 2 000/15min).
-</div>
+            <section id="global-parameters">
+                <h2>Globala Parametrar</h2>
+                <p>Dessa query-parametrar kan användas på de flesta GET-endpoints för att styra svaret.</p>
+                <table class="param-table">
+                    <thead><tr><th>Parameter</th><th>Beskrivning</th><th>Exempel</th></tr></thead>
+                    <tbody>
+                        <tr><td>amount</td><td>Antal objekt som ska genereras (1-100 för Hobby, upp till 10,000 för Pro/Team).</td><td><code>?amount=5</code></td></tr>
+                        <tr><td>seed</td><td>Använd ett "frö" för att få deterministisk (samma) data vid varje anrop.</td><td><code>?seed=test123</code></td></tr>
+                        <tr><td>delay</td><td>Simulera nätverkslagg genom att fördröja svaret (i millisekunder).</td><td><code>?delay=1500</code></td></tr>
+                        <tr><td>status</td><td>Tvinga servern att svara med en specifik HTTP-statuskod för att testa felhantering.</td><td><code>?status=500</code></td></tr>
+                        <tr><td>format</td><td>Få svaret i XML-format istället för JSON.</td><td><code>?format=xml</code></td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="scenario-builder">
+                <h2>Scenario Builder</h2>
+                <p>För endpoints som <code>/api/person</code> och <code>/api/identity</code> kan du styra egenskaperna hos den genererade datan.</p>
+                <table class="param-table">
+                     <thead><tr><th>Parameter</th><th>Beskrivning</th><th>Exempel</th></tr></thead>
+                    <tbody>
+                        <tr><td>minAge</td><td>Minsta ålder på de genererade personerna.</td><td><code>?minAge=18</code></td></tr>
+                        <tr><td>maxAge</td><td>Högsta ålder på de genererade personerna.</td><td><code>?maxAge=65</code></td></tr>
+                        <tr><td>city</td><td>Generera endast personer med adresser i en specifik stad (t.ex. Stockholm, Göteborg, Malmö).</td><td><code>?city=Malmö</code></td></tr>
+                        <tr><td>invalidRate</td><td>En procentsats (0-100) för chansen att ett genererat personnummer är medvetet ogiltigt.</td><td><code>?invalidRate=10</code></td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+             <section id="person">
+                <h3>Person</h3>
+                <p>Genererar realistiska svenska personer med namn, address och kontaktuppgifter.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/person</div>
+            </section>
+            
+            <section id="company">
+                 <h3>Företag</h3>
+                <p>Genererar svenska aktiebolag med giltiga organisations- och momsnummer.</p>
+                <div class="code-block" onclick="copyCode(this)">GET /api/company</div>
+            </section>
+            
+            <!-- Add all other sections here -->
 
-        <section class="docs-section">
-            <h3 style="margin-bottom: 30px;">Core Generators</h3>
-            <div class="dataset-grid">
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Person</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/person</span>
-                    <p class="dataset-desc">Svenska namn, personnummer, adresser.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">?amount=5&minAge=20</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Företag</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/company</span>
-                    <p class="dataset-desc">Aktiebolag med orgnummer och momsnummer.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">?amount=10</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Ekonomi</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/finance</span>
-                    <p class="dataset-desc">Bankgiro, Plusgiro, OCR, IBAN.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">/api/finance</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Fordon</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/vehicle</span>
-                    <p class="dataset-desc">Regplåtar, fordonstyp och modell.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">/api/vehicle</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Kreditkort</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/creditcard</span>
-                    <p class="dataset-desc">Testnummer för Visa/Mastercard.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">/api/creditcard</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">IMEI</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/imei</span>
-                    <p class="dataset-desc">IMEI-nummer för mobila enheter.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">/api/imei</span>
-                </div>
-            </div>
-        </section>
-
-        <section class="docs-section">
-            <h3 style="margin-bottom: 30px;">Komplexa Flöden</h3>
-            <div class="dataset-grid">
-                <div class="dataset-card" style="border-color: var(--accent);">
-                    <div class="dataset-header"><span class="dataset-title">Hel Identitet</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/identity</span>
-                    <p class="dataset-desc">Komplett kundresa: Person + Konto + Historik.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">?seed=kund1</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">BankID Mock</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/bankid</span>
-                    <p class="dataset-desc">Simulerat BankID-svar (complete/pending/failed).</p>
-                    <span class="query-param-example" onclick="copyCode(this)">/api/bankid</span>
-                </div>
-            </div>
-        </section>
-
-        <section class="docs-section">
-            <h3 style="margin-bottom: 30px;">Verktyg</h3>
-            <div class="dataset-grid">
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Validator</span><span
-                            class="dataset-method">GET</span></div>
-                    <span class="dataset-url">/api/validate/:input</span>
-                    <p class="dataset-desc">Validerar PNR, OrgNr, IBAN, Kreditkort m.m.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">/api/validate/556012-5790</span>
-                </div>
-                <div class="dataset-card">
-                    <div class="dataset-header"><span class="dataset-title">Data Maskning</span><span
-                            class="dataset-method" style="background: #e36049;">POST</span></div>
-                    <span class="dataset-url">/api/mask</span>
-                    <p class="dataset-desc">Anonymisera ID:n deterministiskt.</p>
-                    <span class="query-param-example" onclick="copyCode(this)">POST body: ["19900101-1234"]</span>
-                </div>
-            </div>
-        </section>
-
-        <section style="margin-top: 40px; margin-bottom: 60px;">
-            <h2 class="docs-title" style="font-size: 1.5rem;">💻 Integrations-exempel</h2>
-            <div class="code-window">
-                <div class="tabs">
-                    <div class="tab active" onclick="switchTab('js')">JavaScript</div>
-                    <div class="tab" onclick="switchTab('py')">Python</div>
-                    <div class="tab" onclick="switchTab('cs')">C# (.NET)</div>
-                </div>
-                <div id="js" class="tab-content active">
-                    <div class="code-block" onclick="copyCode(this)">fetch('https://luhn.se/api/identity').then(res =>
-                        res.json()).then(console.log);</div>
-                </div>
-                <div id="py" class="tab-content">
-                    <div class="code-block" onclick="copyCode(this)">import requests<br>res =
-                        requests.get('https://luhn.se/api/identity')<br>print(res.json())</div>
-                </div>
-                <div id="cs" class="tab-content">
-                    <div class="code-block" onclick="copyCode(this)">using var client = new HttpClient();<br>var json =
-                        await client.GetStringAsync("https://luhn.se/api/identity");</div>
-                </div>
-            </div>
-        </section>
-
-        <section class="article-section" style="margin-bottom: 60px; text-align: center;">
-            <div class="article-content">
-                <h2>Vill du förstå matematiken?</h2>
-                <p style="color:#8b949e; margin-bottom: 20px;">
-                    Vi har skrivit en djupgående guide om hur Luhn-algoritmen (Modulus 10) fungerar steg för steg.
-                </p>
-                <a href="/luhn-algoritmen"
-                    style="color: var(--accent); font-weight: 600; text-decoration: none; font-size: 1.1rem;">
-                    Läs guiden: “Så fungerar Luhn-algoritmen” →
-                </a>
-            </div>
-        </section>
-    </main>
+        </main>
+    </div>
 
     <footer>
         <div class="container">
-            <div class="footer-content">
-                <div>
-                    <p>&copy; 2025 Luhn.se</p>
-                    <p style="font-size: 0.7rem; color: #444;">Alla kreditkortsnummer är fiktiva testnummer (Test BINs).
-                    </p>
-                </div>
-                <div class="footer-links">
-                    <a href="/docs">API Docs</a>
-                    <a href="/terms">Villkor</a> <a href="mailto:hej@luhn.se">Support</a>
-                </div>
-            </div>
+            <p>&copy; 2025 Luhn.se</p>
         </div>
     </footer>
 
-    <div id="toast" class="toast">Kopierat! 📋</div>
+    <div id="toast" class="toast"></div>
 
+    <script src="/pocketbase.umd.js"></script>
+    <script src="/auth.js"></script>
     <script>
+        // Docs-specific JS
         function copyCode(el) {
             navigator.clipboard.writeText(el.innerText).then(() => {
                 const toast = document.getElementById('toast');
@@ -277,55 +141,46 @@
                 setTimeout(() => toast.classList.remove('show'), 2000);
             });
         }
-        function switchTab(lang) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-            document.getElementById(lang).classList.add('active');
-            const buttons = document.querySelectorAll('.tab');
-            if (lang === 'js') buttons[0].classList.add('active');
-            if (lang === 'py') buttons[1].classList.add('active');
-            if (lang === 'cs') buttons[2].classList.add('active');
-        }
-    </script>
-    <script>
-        function updateNavLinks() {
-            const navLinksContainer = document.getElementById('nav-links-container');
-            if (!navLinksContainer || !pb) return;
 
-            if (pb.authStore.isValid) {
-                // User is logged in
-                navLinksContainer.innerHTML = `
-                    <a href="/">Generatorn</a>
-                    <a href="/profile.html" style="margin-left: 30px;">Min Profil</a>
-                    <a href="#"><button id="logout-btn-nav" class="action-btn outline-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Logga Ut</button></a>
-                `;
-                // Re-attach logout listener
-                const logoutBtn = document.getElementById('logout-btn-nav');
-                if(logoutBtn) {
-                    logoutBtn.addEventListener('click', (e) => {
+        document.addEventListener('DOMContentLoaded', () => {
+            // Logic to handle nav links
+            const pb = window.pb;
+            const navLinksContainer = document.getElementById('nav-links-container');
+            if (navLinksContainer && pb) {
+                if (pb.authStore.isValid) {
+                    navLinksContainer.innerHTML = `
+                        <a href="/">Generatorn</a>
+                        <a href="/profile" style="margin-left: 30px;">Min Profil</a>
+                        <a href="#"><button id="logout-btn-nav" class="action-btn outline-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Logga Ut</button></a>
+                    `;
+                    document.getElementById('logout-btn-nav').addEventListener('click', (e) => {
                         e.preventDefault();
                         pb.authStore.clear();
                         window.location.href = '/';
                     });
                 }
-            } else {
-                // User is logged out
-                 navLinksContainer.innerHTML = `
-                    <a href="/">Generatorn</a>
-                    <a href="mailto:hej@luhn.se">Kontakt</a>
-                    <a href="/login.html" style="margin-left: 30px;">Logga In</a>
-                    <a href="/register.html"><button class="action-btn" style="padding: 8px 16px; margin-left: 15px; font-size: 0.9rem;">Registrera</button></a>
-                `;
             }
-        }
 
-        // Run on page load
-        if (window.pb) {
-            updateNavLinks();
-        } else {
-            document.addEventListener('DOMContentLoaded', updateNavLinks);
-        }
+            // Logic for sticky nav and scrollspy
+            const nav = document.getElementById('docs-nav');
+            const sections = document.querySelectorAll('.docs-content section');
+            const navLinks = nav.querySelectorAll('a');
+
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => observer.observe(section));
+        });
     </script>
 </body>
-
 </html>
