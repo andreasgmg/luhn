@@ -19,47 +19,7 @@ const PLAN_LIMITS = {
     team:  { rate: 10000, bulk: 10000, name: "Team" }   // Max 10 000 rader per anrop
 };
 
-// --- SQLITE SETUP ---
-const DB_FILE = './luhn.db';
-let db = null;
-
-(async () => {
-    try {
-        const dbExists = fs.existsSync(DB_FILE);
-        db = await open({
-            filename: DB_FILE,
-            driver: sqlite3.Database
-        });
-
-        if (!dbExists) {
-            console.log("🏃‍➡️ Creating database schema...");
-            await db.exec(`
-                CREATE TABLE api_keys (
-                    key_value TEXT PRIMARY KEY,
-                    plan_type TEXT NOT NULL,
-                    is_active BOOLEAN NOT NULL DEFAULT true
-                );
-                CREATE TABLE leads (
-                    email TEXT PRIMARY KEY
-                );
-            `);
-            // Lägg till en testnyckel för Pro-planen
-            await db.run("INSERT INTO api_keys (key_value, plan_type) VALUES (?, ?)", "PRO-TEST-KEY-123", "pro");
-            console.log("🔑 Added a test 'pro' API key: PRO-TEST-KEY-123");
-        }
-        console.log("✅ SQLite database is connected and ready.");
-    } catch (err) {
-        console.error("❌ CRITICAL: SQLite failed to initialize.", err.message);
-    }
-})();
-
-
-app.use(cors());
-// Ta bort index false i prod
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
-app.use(express.json());
-
-// --- MIDDLEWARE: API NYCKEL CHECK ---
+// MIDDLEWARE: API NYCKEL CHECK (med Pocketbase)
 const identifyUser = async (req, res, next) => {
     const apiKey = req.headers['x-api-key'] || req.query.key;
     
@@ -70,26 +30,27 @@ const identifyUser = async (req, res, next) => {
         identifier: req.ip 
     };
 
-    if (apiKey && db) {
+    if (apiKey && pb) {
         try {
-            const keyData = await db.get('SELECT plan_type, is_active FROM api_keys WHERE key_value = ?', apiKey);
+            // Find user by their API key in Pocketbase
+            const user = await pb.collection('users').getFirstListItem(`api_key = "${apiKey}"`);
 
-            if (keyData && keyData.is_active) {
-                const planType = keyData.plan_type.toLowerCase();
-                if (PLAN_LIMITS[planType]) {
-                    req.userContext = {
-                        type: planType,
-                        plan: PLAN_LIMITS[planType],
-                        identifier: apiKey // Betalande kunder identifieras via nyckel
-                    };
-                }
+            if (user && PLAN_LIMITS[user.plan]) {
+                req.userContext = {
+                    type: user.plan,
+                    plan: PLAN_LIMITS[user.plan],
+                    identifier: apiKey // Betalande kunder identifieras via nyckel
+                };
             } else {
-                // Om man skickar en nyckel som är fel/inaktiv -> Neka direkt.
-                return res.status(401).json({ error: true, message: "Ogiltig eller inaktiv API-nyckel." });
+                 return res.status(401).json({ error: true, message: "Ogiltig API-nyckel." });
             }
         } catch (err) {
-            console.error("Database query error in identifyUser:", err.message);
-            // Fail open to hobby plan if db fails
+            // Pocketbase throws an error if no record is found
+            if (err.status === 404) {
+                return res.status(401).json({ error: true, message: "Ogiltig API-nyckel." });
+            }
+            console.error("Pocketbase query error in identifyUser:", err.message);
+            // Fail open to hobby plan if db fails for other reasons
         }
     }
     next();
@@ -136,6 +97,138 @@ const bulkLimiter = rateLimit({
 
 // Applicera limiters: Först identifiera, sen kolla Bulk, sen Standard.
 app.use('/api', identifyUser, bulkLimiter, standardLimiter);
+
+
+// --- STRIPE & POCKETBASE INTEGRATION ---
+const Stripe = require('stripe');
+const PocketBase = require('pocketbase/cjs');
+
+let stripe, pb;
+
+// --- Stripe & Pocketbase Client Initialization ---
+try {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    console.log("✅ Stripe client initialized.");
+} catch (err) {
+    console.error("❌ CRITICAL: Stripe failed to initialize.", err.message);
+}
+
+// Pocketbase Admin Client
+(async () => {
+    try {
+        pb = new PocketBase(process.env.POCKETBASE_URL);
+        await pb.admins.authWithPassword(process.env.POCKETBASE_ADMIN_EMAIL, process.env.POCKETBASE_ADMIN_PASSWORD);
+        pb.autoCancellation(false);
+        console.log("✅ Pocketbase Admin client authenticated.");
+    } catch (err) {
+        console.error("❌ CRITICAL: Pocketbase Admin client failed to authenticate.", err.message);
+    }
+})();
+
+// Endpoint to create a checkout session
+app.post('/api/create-checkout-session', async (req, res) => {
+    const { priceId, userId } = req.body;
+
+    if (!stripe || !priceId || !userId) {
+        return res.status(400).json({ error: "Missing priceId or userId" });
+    }
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            line_items: [{ price: priceId, quantity: 1 }],
+            mode: 'subscription',
+            success_url: `https://luhn.se/profile.html?status=success`,
+            cancel_url: `https://luhn.se/profile.html?status=cancelled`,
+            // Pass the Pocketbase user ID to the webhook
+            client_reference_id: userId,
+        });
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error("Stripe session creation failed:", error);
+        res.status(500).json({ error: "Could not create Stripe session" });
+    }
+});
+
+
+// Stripe webhook handler
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    if (!stripe || !pb) return res.status(500).send("Server not fully initialized.");
+    
+    const sig = req.headers['stripe-signature'];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+        console.log(`Webhook signature verification failed.`);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    
+    console.log(`Received Stripe event: ${event.type}`);
+
+    switch (event.type) {
+        case 'checkout.session.completed': {
+            const session = event.data.object;
+            const userId = session.client_reference_id;
+            const stripeCustomerId = session.customer;
+            const stripeSubscriptionId = session.subscription;
+            
+            if (!userId) {
+                console.error("Webhook Error: No client_reference_id (userId) in completed session.");
+                break;
+            }
+
+            try {
+                // Get subscription details to find the price ID
+                const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+                const priceId = subscription.items.data[0].price.id;
+
+                let plan = 'hobby';
+                if ([process.env.STRIPE_PRICE_PRO_MONTHLY, process.env.STRIPE_PRICE_PRO_YEARLY].includes(priceId)) {
+                    plan = 'pro';
+                } else if ([process.env.STRIPE_PRICE_TEAM_MONTHLY, process.env.STRIPE_PRICE_TEAM_YEARLY].includes(priceId)) {
+                    plan = 'team';
+                }
+
+                // Update user in Pocketbase
+                const data = {
+                    plan: plan,
+                    stripe_customer_id: stripeCustomerId,
+                    stripe_subscription_id: stripeSubscriptionId,
+                };
+                await pb.collection('users').update(userId, data);
+                console.log(`Updated user ${userId} to plan '${plan}'`);
+
+            } catch (error) {
+                console.error(`Failed to update user for session ${session.id}:`, error);
+            }
+            break;
+        }
+        case 'customer.subscription.deleted': {
+            const subscription = event.data.object;
+            try {
+                // Find user by subscription ID
+                const users = await pb.collection('users').getFullList({
+                    filter: `stripe_subscription_id = "${subscription.id}"`,
+                });
+                
+                if (users && users.length > 0) {
+                    const user = users[0];
+                    // Revert to hobby plan
+                    await pb.collection('users').update(user.id, { plan: 'hobby' });
+                    console.log(`Reverted user ${user.id} to 'hobby' plan due to subscription cancellation.`);
+                }
+            } catch (error) {
+                console.error(`Failed to handle subscription deletion for ${subscription.id}:`, error);
+            }
+            break;
+        }
+    }
+
+    res.json({ received: true });
+});
+
 
 
 // --- HJÄLPFUNKTIONER ---
@@ -364,6 +457,12 @@ app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.
 app.get('/docs', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'docs.html')); });
 app.get('/luhn-algoritmen', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'luhn-algoritmen.html')); });
 app.get('/terms', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'terms.html')); });
+
+// Endpoint to provide publishable key to frontend
+app.get('/api/stripe-config', (req, res) => {
+    res.json({ publishableKey: process.env.STRIPE_PUBLISHABLE_KEY });
+});
+
 
 app.get('/api/person', async (req, res) => handleResponse(req, res, createPerson, getScenarioOptions(req)));
 app.get('/api/person/:id', async (req, res) => handleResponse(req, res, createPerson, getScenarioOptions(req)));

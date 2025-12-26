@@ -228,11 +228,12 @@
                 <div class="pricing-card popular">
                     <div class="popular-badge">Mest värde</div>
                     <h3 class="plan-name">Pro</h3>
-                    <div class="plan-price" data-monthly="49 kr" data-yearly="39 kr">49 kr <span
+                    <div class="plan-price" data-monthly="49 kr" data-yearly="39 kr">39 kr <span
                             class="period">/mån</span></div>
                     <p class="plan-desc">För utvecklare & automation.</p>
-                    <button class="action-btn" style="background: var(--accent); color: white;"
-                        onclick="showPremiumModal()">Välj Pro</button>
+                    <button id="pro-plan-btn" class="action-btn" style="background: var(--accent); color: white;"
+                        data-price-id="price_1SibSiQPagsqvP2zoicIgnNS"
+                        onclick="redirectToCheckout(this.getAttribute('data-price-id'))">Välj Pro</button>
                     <ul class="feature-list">
                         <li>✅ <strong>2 000</strong> anrop / 15 min</li>
                         <li>✅ <strong>Bulk Export</strong> (10 st / timme)</li>
@@ -244,10 +245,12 @@
 
                 <div class="pricing-card">
                     <h3 class="plan-name">Team</h3>
-                    <div class="plan-price" data-monthly="149 kr" data-yearly="119 kr">149 kr <span
+                    <div class="plan-price" data-monthly="149 kr" data-yearly="119 kr">119 kr <span
                             class="period">/mån</span></div>
                     <p class="plan-desc">För större volymer.</p>
-                    <button class="action-btn outline-btn" onclick="showPremiumModal()">Välj Team</button>
+                    <button id="team-plan-btn" class="action-btn outline-btn" 
+                        data-price-id="price_1SibWIQPagsqvP2zkYRlISOC"
+                        onclick="redirectToCheckout(this.getAttribute('data-price-id'))">Välj Team</button>
                     <ul class="feature-list">
                         <li>✅ <strong>10 000</strong> anrop / 15 min</li>
                         <li>✅ Allt i Pro</li>
@@ -286,7 +289,7 @@
                         <i>Format: SQL / CSV</i>
                     </div>
                     <button class="action-btn" style="background: var(--purple); color:black;"
-                        onclick="showPremiumModal()">Köp (49 kr)</button>
+                        onclick="redirectToCheckout('price_1SibSiQPagsqvP2zoicIgnNS')">Köp (fr. 39 kr)</button>
                 </div>
             </div>
         </section>
@@ -332,6 +335,10 @@
 
     <div id="toast" class="toast">Kopierat till urklipp! 📋</div>
 
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://unpkg.com/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/stripe.js"></script>
     <script>
         let generatedUrl = "";
         function updateUrl() {
@@ -395,7 +402,31 @@
         function closePremiumModal() { document.getElementById('premium-modal').style.display = 'none'; }
         async function submitLead() { const email = document.getElementById('lead-email').value; const modalContent = document.getElementById('modal-content'); if (!email.includes('@')) { alert("Fyll i en giltig e-post!"); return; } const btn = document.querySelector('#modal-content .action-btn'); btn.innerText = "Skickar..."; try { await fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) }); modalContent.innerHTML = `<div style="font-size: 3rem; margin-bottom: 10px;">🎉</div><h3>Tack!</h3><p>Vi har noterat ditt intresse.</p><button class="action-btn" onclick="closePremiumModal()">Stäng</button>`; } catch (e) { alert("Något gick fel."); btn.innerText = "Håll mig uppdaterad"; } }
         let debounceTimer; async function checkLuhn() { const input = document.getElementById('validator-input').value; const resultBox = document.getElementById('validator-result'); if (!input) { resultBox.innerHTML = ""; return; } clearTimeout(debounceTimer); resultBox.innerHTML = '<span style="color: #8b949e;">...</span>'; debounceTimer = setTimeout(async () => { try { const response = await fetch(`/api/validate/${encodeURIComponent(input)}`); const data = await response.json(); if (data.isValid) { resultBox.innerHTML = `<span class="is-valid">✅ Giltig! &nbsp;<span style="color: #fff; background: #238636; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; vertical-align: middle;">${data.type}</span></span>`; } else { resultBox.innerHTML = `<span class="is-invalid">❌ Ogiltig. <span style="font-size: 0.8rem; color: #8b949e;">(Kunde inte validera som ${data.type})</span></span>`; } } catch (e) { resultBox.innerHTML = `<span class="is-invalid">Fel vid validering.</span>`; } }, 300); }
-        function togglePricing() { const isYearly = document.getElementById('billing-toggle').checked; const prices = document.querySelectorAll('.plan-price'); prices.forEach(price => { const monthly = price.getAttribute('data-monthly'); const yearly = price.getAttribute('data-yearly'); if (monthly && yearly) { price.innerHTML = `${isYearly ? yearly : monthly} <span class="period">/mån</span>`; } }); }
+        
+        function togglePricing() {
+            const isYearly = document.getElementById('billing-toggle').checked;
+            const prices = document.querySelectorAll('.plan-price');
+            const proBtn = document.getElementById('pro-plan-btn');
+            const teamBtn = document.getElementById('team-plan-btn');
+
+            // Price IDs from your Stripe setup
+            const priceProMonthly = "price_1SibUFQPagsqvP2zQhxHNM2x";
+            const priceProYearly = "price_1SibSiQPagsqvP2zoicIgnNS";
+            const priceTeamMonthly = "price_1SibX3QPagsqvP2zrbOeJjAC";
+            const priceTeamYearly = "price_1SibWIQPagsqvP2zkYRlISOC";
+
+            prices.forEach(price => {
+                const monthly = price.getAttribute('data-monthly');
+                const yearly = price.getAttribute('data-yearly');
+                if (monthly && yearly) {
+                    price.innerHTML = `${isYearly ? yearly : monthly} <span class="period">/mån</span>`;
+                }
+            });
+
+            if (proBtn) proBtn.setAttribute('data-price-id', isYearly ? priceProYearly : priceProMonthly);
+            if (teamBtn) teamBtn.setAttribute('data-price-id', isYearly ? priceTeamYearly : priceTeamMonthly);
+        }
+
         function syntaxHighlight(json) { json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) { var cls = 'number'; if (/^"/.test(match)) { if (/:$/.test(match)) { cls = 'key'; } else { cls = 'string'; } } else if (/true|false/.test(match)) { cls = 'boolean'; } else if (/null/.test(match)) { cls = 'null'; } return '<span class="' + cls + '">' + match + '</span>'; }); }
 
         updateUrl(); fetchData(); togglePricing();
