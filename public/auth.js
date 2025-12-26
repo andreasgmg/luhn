@@ -25,7 +25,7 @@ if (registerForm) {
         try {
             await pb.collection('users').create(data);
             alert('Konto skapat! Du kan nu logga in.');
-            window.location.href = '/login.html';
+            window.location.href = '/login';
         } catch (err) {
             console.error('Registration Failed:', err);
             errorMessageP.textContent = 'Registrering misslyckades. ' + (err.data?.data?.email?.message || 'Kontrollera dina uppgifter.');
@@ -41,7 +41,7 @@ if (loginForm) {
 
         try {
             await pb.collection('users').authWithPassword(loginForm.email.value, loginForm.password.value);
-            window.location.href = '/profile.html';
+            window.location.href = '/profile';
         } catch (err) {
             console.error('Login Failed:', err);
             errorMessageP.textContent = 'Inloggning misslyckades. Kontrollera e-post och lösenord.';
@@ -61,7 +61,7 @@ if (logoutBtn) {
 if (profileContent) {
     (async () => {
         if (!pb.authStore.isValid) {
-            window.location.href = '/login.html';
+            window.location.href = '/login';
             return;
         }
 
@@ -97,7 +97,7 @@ if (profileContent) {
         } catch (err) {
             console.error("Profile page error:", err);
             pb.authStore.clear();
-            window.location.href = '/login.html';
+            window.location.href = '/login';
         }
     })();
 }

@@ -279,6 +279,16 @@ const handleResponse = async (req, res, dataFunction, options = {}) => {
 
 const getScenarioOptions = (req) => ({ invalidRate: parseInt(req.query.invalidRate) || 0, city: req.query.city, minAge: parseInt(req.query.minAge), maxAge: parseInt(req.query.maxAge), });
 
+// --- PAGE ROUTES ---
+// Serve clean URLs for static pages
+app.get('/docs', (req, res) => res.sendFile(path.join(__dirname, 'public', 'docs.html')));
+app.get('/luhn-algoritmen', (req, res) => res.sendFile(path.join(__dirname, 'public', 'luhn-algoritmen.html')));
+app.get('/terms', (req, res) => res.sendFile(path.join(__dirname, 'public', 'terms.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+
+// --- API DATA ROUTES ---
 app.get('/api/person', (req, res) => handleResponse(req, res, createPerson, getScenarioOptions(req)));
 app.get('/api/person/:id', (req, res) => handleResponse(req, res, createPerson, getScenarioOptions(req)));
 app.get('/api/company', (req, res) => handleResponse(req, res, createCompany));
